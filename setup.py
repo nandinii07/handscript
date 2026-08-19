@@ -18,6 +18,7 @@ setuptools.setup(
         "dev": [
             "pre-commit",
             "black",
+            "pytest",
             "mkdocs==1.2.2",
             "mkdocs-material==6.1.0",
             "pymdown-extensions==8.2",
@@ -26,7 +27,10 @@ setuptools.setup(
         ]
     },
     entry_points={
-        "console_scripts": ["handwrite = handwrite.cli:main"],
+        "console_scripts": [
+            "handwrite = handwrite.cli:main",
+            "handwrite-render = handwrite.render_cli:main",
+        ],
     },
     include_package_data=True,
     classifiers=[

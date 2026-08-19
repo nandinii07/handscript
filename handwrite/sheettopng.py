@@ -1,27 +1,27 @@
 import os
-import itertools
 import json
 
 import cv2
 
-# Seq: A-Z, a-z, 0-9, SPECIAL_CHARS
-ALL_CHARS = list(
-    itertools.chain(
-        range(65, 91),
-        range(97, 123),
-        range(48, 58),
-        [ord(i) for i in ".,;:!?\"'-+=/%&()[]"],
-    )
-)
+from handwrite.characters import ALL_CHARS, EXISTING_CHARS, PAGES
+
+# ALL_CHARS is re-exported here (rather than defined here) purely so that
+# any existing code/tests importing `from handwrite.sheettopng import
+# ALL_CHARS` keep working. The single source of truth for character lists
+# and page layout now lives in handwrite/characters.py.
+
+
+class SheetDetectionError(Exception):
+    """Raised when a scanned sheet cannot be read or its boxes not found."""
 
 
 class SHEETtoPNG:
-    """Converter class to convert input sample sheet to character PNGs."""
+    """Converter class to convert input sample sheet(s) to character PNGs."""
 
-    def convert(self, sheet, characters_dir, config, cols=8, rows=10):
-        """Convert a sheet of sample writing input to a custom directory structure of PNGs.
+    def convert(self, sheet, characters_dir, config, cols=8, rows=10, characters=None):
+        """Convert one sheet of sample writing input to a directory structure of PNGs.
 
-        Detect all characters in the sheet as a separate contours and convert each to
+        Detect all characters in the sheet as separate contours and convert each to
         a PNG image in a temp/user provided directory.
 
         Parameters
@@ -36,18 +36,63 @@ class SHEETtoPNG:
             Number of columns of expected contours. Defaults to 8 based on the default sample.
         rows : int, default=10
             Number of rows of expected contours. Defaults to 10 based on the default sample.
+        characters : list of int, optional
+            Unicode ordinal for each box on this sheet, in the exact
+            left-to-right, top-to-bottom order the boxes appear on the page.
+            Defaults to EXISTING_CHARS (the original 80-character, single
+            page form), which preserves the original single-sheet behaviour.
         """
+        if characters is None:
+            characters = EXISTING_CHARS
+
         with open(config) as f:
             threshold_value = json.load(f).get("threshold_value", 200)
         if os.path.isdir(sheet):
             raise IsADirectoryError("Sheet parameter should not be a directory.")
-        characters = self.detect_characters(
-            sheet, threshold_value, cols=cols, rows=rows
-        )
-        self.save_images(
-            characters,
-            characters_dir,
-        )
+        detected = self.detect_characters(sheet, threshold_value, cols=cols, rows=rows)
+        self.save_images(detected, characters_dir, characters)
+
+    def convert_pages(self, sheets, characters_dir, config, pages=None):
+        """Convert several sheets (one per form page) into one characters directory.
+
+        This is how the extended, multi-page form is processed: each scanned
+        page image is run through the same single-sheet `convert()` above,
+        using that page's own cols/rows/characters, and all the resulting
+        PNGs land in the same `characters_dir` so the rest of the pipeline
+        (PNGtoSVG, SVGtoTTF) doesn't need to know multiple pages exist.
+
+        Parameters
+        ----------
+        sheets : list of str
+            Paths to the scanned page images, in the same order as `pages`
+            (page 1 first, page 2 second, ...).
+        characters_dir : str
+            Path to directory to save characters in.
+        config : str
+            Path to config file.
+        pages : list of dict, optional
+            Defaults to `handwrite.characters.PAGES`. Each entry needs
+            `cols`, `rows` and `chars` keys.
+        """
+        if pages is None:
+            pages = PAGES
+
+        if len(sheets) != len(pages):
+            raise ValueError(
+                "Expected {} sheet(s) (one per form page), got {}.".format(
+                    len(pages), len(sheets)
+                )
+            )
+
+        for sheet, page in zip(sheets, pages):
+            self.convert(
+                sheet,
+                characters_dir,
+                config,
+                cols=page["cols"],
+                rows=page["rows"],
+                characters=page["chars"],
+            )
 
     def detect_characters(self, sheet_image, threshold_value, cols=8, rows=10):
         """Detect contours on the input image and filter them to get only characters.
@@ -73,11 +118,20 @@ class SHEETtoPNG:
         sorted_characters : list of list
             Final rows*cols contours in form of list of list arranged as:
             sorted_characters[x][y] denotes contour at x, y position in the input grid.
-        """
-        # TODO Raise errors and suggest where the problem might be
 
+        Raises
+        ------
+        SheetDetectionError
+            If the image cannot be read, or fewer than rows*cols boxes are
+            found on it.
+        """
         # Read the image and convert to grayscale
         image = cv2.imread(sheet_image)
+        if image is None:
+            raise SheetDetectionError(
+                "Could not read '{}'. Check the path exists and is an image "
+                "file OpenCV can open (jpg, png, bmp, tif).".format(sheet_image)
+            )
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # Threshold and filter the image for better contour detection
@@ -102,6 +156,24 @@ class SHEETtoPNG:
             key=cv2.contourArea,
             reverse=True,
         )
+
+        # Every box on the sheet has to have been found, otherwise the
+        # position-to-character mapping silently shifts and the font ends up
+        # with the right glyphs under the wrong characters.
+        if len(contours) < rows * cols:
+            raise SheetDetectionError(
+                "Found only {} box(es) on '{}', expected {} ({} columns x {} "
+                "rows). The scan may be cropped, skewed, or too light - try "
+                'rescanning, or adjust "threshold_value" in the config '
+                "(currently detecting at {}).".format(
+                    len(contours),
+                    sheet_image,
+                    rows * cols,
+                    cols,
+                    rows,
+                    threshold_value,
+                )
+            )
 
         # Calculate the bounding of the first contour and approximate the height
         # and width for final cropping.
@@ -131,31 +203,36 @@ class SHEETtoPNG:
 
         return sorted_characters
 
-    def save_images(self, characters, characters_dir):
+    def save_images(self, characters, characters_dir, character_ords):
         """Create directory for each character and save as PNG.
 
         Creates directory and PNG file for each image as following:
 
-            characters_dir/ord(character)/ord(character).png  (SINGLE SHEET INPUT)
-            characters_dir/sheet_filename/ord(character)/ord(character).png  (MULTIPLE SHEETS INPUT)
+            characters_dir/ord(character)/ord(character).png
 
         Parameters
         ----------
         characters : list of list
-            Sorted list of character images each inner list representing a row of images.
+            Sorted list of character images (one per detected box on the sheet),
+            each inner list representing a row of images.
         characters_dir : str
             Path to directory to save characters in.
+        character_ords : list of int
+            Unicode ordinal for each box, in the same left-to-right,
+            top-to-bottom order as `characters`. If a sheet has more boxes
+            than characters (e.g. unused/leftover boxes on the last row of a
+            page), the extra boxes are simply ignored: `zip` stops at the
+            shorter of the two lists.
         """
         os.makedirs(characters_dir, exist_ok=True)
 
-        # Create directory for each character and save the png for the characters
-        # Structure (single sheet): UserProvidedDir/ord(character)/ord(character).png
-        # Structure (multiple sheets): UserProvidedDir/sheet_filename/ord(character)/ord(character).png
-        for k, images in enumerate(characters):
-            character = os.path.join(characters_dir, str(ALL_CHARS[k]))
+        # Create directory for each character and save the png for the character.
+        # Structure: UserProvidedDir/ord(character)/ord(character).png
+        for ordinal, images in zip(character_ords, characters):
+            character = os.path.join(characters_dir, str(ordinal))
             if not os.path.exists(character):
                 os.mkdir(character)
             cv2.imwrite(
-                os.path.join(character, str(ALL_CHARS[k]) + ".png"),
+                os.path.join(character, str(ordinal) + ".png"),
                 images[0],
             )

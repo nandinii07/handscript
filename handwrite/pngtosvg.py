@@ -8,6 +8,10 @@ class PotraceNotFound(Exception):
     pass
 
 
+class PotraceFailed(Exception):
+    """Raised when potrace is installed but fails to trace an image."""
+
+
 class PNGtoSVG:
     """Converter class to convert character PNGs to BMPs and SVGs."""
 
@@ -41,28 +45,44 @@ class PNGtoSVG:
         ------
         PotraceNotFound
             Raised if potrace not found in path by shutil.which()
+        PotraceFailed
+            Raised if potrace runs but exits with an error.
         """
         if shutil.which("potrace") is None:
-            raise PotraceNotFound("Potrace is either not installed or not in path")
-        else:
-            subprocess.run(["potrace", path, "-b", "svg", "-o", path[0:-4] + ".svg"])
+            raise PotraceNotFound(
+                "Potrace is either not installed or not in path. Install it "
+                "from http://potrace.sourceforge.net/ (macOS: `brew install "
+                "potrace`, Debian/Ubuntu: `apt install potrace`)."
+            )
+
+        output_path = path[0:-4] + ".svg"
+        result = subprocess.run(
+            ["potrace", path, "-b", "svg", "-o", output_path],
+            capture_output=True,
+            text=True,
+        )
+        # potrace failing used to go unnoticed until FontForge later
+        # complained about a missing .svg, or - worse - produced a font with
+        # a blank glyph.
+        if result.returncode != 0:
+            raise PotraceFailed(
+                "potrace failed on {} (exit code {}): {}".format(
+                    path, result.returncode, result.stderr.strip() or "no output"
+                )
+            )
 
     def pngToBmp(self, path):
-        """Convert .bmp image to .svg using potrace.
+        """Convert a .png character image to a thresholded .bmp.
 
-        Converts the passed .bmp file to .svg using the potrace
-        (http://potrace.sourceforge.net/). Each .bmp is passed as
-        a parameter to potrace which is called as a subprocess.
+        Every pixel is forced to either black or white, since potrace traces
+        a two-colour bitmap. The image is scaled to a fixed 100x100 so all
+        glyphs arrive in FontForge at a consistent size - which is why the
+        form draws identically shaped boxes on every page.
 
         Parameters
         ----------
         path : str
-            Path to the bmp file to be converted.
-
-        Raises
-        ------
-        PotraceNotFound
-            Raised if potrace not found in path by shutil.which()
+            Path to the png file to be converted.
         """
         img = Image.open(path).convert("RGBA").resize((100, 100))
 

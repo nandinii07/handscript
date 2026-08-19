@@ -4,7 +4,9 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: mixed-line-ending
+  # Kept in step with the CI lint job, which runs psf/black@stable. An older
+  # pin here formats differently and makes commits fail CI.
   - repo: https://github.com/psf/black
-    rev: 20.8b1
+    rev: 26.5.1
     hooks:
       - id: black

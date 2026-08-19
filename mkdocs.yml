@@ -18,6 +18,9 @@ nav:
                 - SHEETtoPNG: "api/sheettopng.md"
                 - PNGtoSVG: "api/pngtosvg.md"
                 - SVGtoTTF: "api/svgtottf.md"
+          - Notation:
+                - Parser: "api/notation.md"
+                - Renderer: "api/renderer.md"
 
 theme:
     name: material

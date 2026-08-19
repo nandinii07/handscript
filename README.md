@@ -29,6 +29,43 @@ Handwrite is also helpful for those with dysgraphia.
 
 You can get started with Handwrite [here](https://yashlamba.github.io/handwrite/).
 
+## What you get
+
+1. **A font from your handwriting.** Print a form, fill in one character per
+   box, scan it, and `handwrite` turns it into a `.ttf` you can install and
+   use in any word processor.
+
+2. **Scientific notation in that handwriting.** `handwrite-render` types
+   formulas like `E = mc^2`, `H_2O` and `SO_4^{2-}` in your font, with real
+   superscripts and subscripts.
+
+There are two forms. The original `handwrite_sample.pdf` collects 80
+characters on one page. The newer `handwrite_sample_extended.pdf` collects
+113 across two pages, adding Greek letters, math operators and arrows
+(`α β γ δ ε θ λ μ π ρ σ φ ω Δ Ω × ÷ ≠ ≤ ≥ ± ∓ ≈ ∝ ∞ √ → ← ↔ { } | °`) - use
+that one if you want to write notation.
+
+## Quick start
+
+```console
+pip install handwrite            # also needs potrace and fontforge installed
+
+# Build a font from a single-page form:
+handwrite scan.jpg fonts/
+
+# ...or from the two-page extended form (one image per page in a directory):
+handwrite scans/ fonts/
+
+# Type notation in it:
+handwrite-render --font fonts/MyFont.ttf "E = mc^2" "H_2O" "SO_4^{2-}"
+```
+
+The second command writes a self-contained HTML page; print it to PDF from
+your browser. Supported notation is `^` and `_`, with `{}` to group more than
+one character - see the
+[usage guide](https://yashlamba.github.io/handwrite/usage/) for the full
+syntax.
+
 ## Sample
 
 You just need to fill up a form:

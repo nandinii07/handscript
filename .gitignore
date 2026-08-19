@@ -131,6 +131,9 @@ dmypy.json
 
 # ttf files
 *.ttf
+# ...except the sample font the renderer tests are checked against. It is a
+# test fixture, not build output - without it tests/test_renderer.py cannot run.
+!tests/test_data/renderer/*.ttf
 
 # IDE
 .vscode

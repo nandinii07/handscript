@@ -47,9 +47,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt install -y potrace
+      - name: Install DejaVu fonts (needed to draw the form's labels)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt install -y fonts-dejavu-core
       - name: Install Handwrite
         run: |
           pip install -e .
+          pip install pytest
       - name: Test
         run: |
-          python setup.py test
+          python -m pytest tests -v

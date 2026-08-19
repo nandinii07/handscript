@@ -121,7 +121,7 @@
       "I": [80, 50],
       "i": [null, 60],
       "J": [40, 30],
-      "j": [-70, 40],
+      "j": [null, 40],
       "k": [40, 20],
       "K": [80, 0],
       "H": [null, 10],
@@ -186,7 +186,7 @@
     },
     "kerning_table": {
       "autokern": true,
-      "seperation": 0,
+      "seperation": 60,
       "rows": [
         null,
         "f-+=/?",

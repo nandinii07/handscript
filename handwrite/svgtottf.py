@@ -4,6 +4,14 @@ import json
 import uuid
 
 
+class FontForgeNotFound(Exception):
+    """Raised when the FontForge executable cannot be found."""
+
+
+class FontForgeFailed(Exception):
+    """Raised when FontForge runs but does not produce a font."""
+
+
 class SVGtoTTF:
     def convert(self, directory, outdir, config, metadata=None):
         """Convert a directory with SVG images to TrueType Font.
@@ -21,24 +29,54 @@ class SVGtoTTF:
             Path to config file.
         metadata : dict
             Dictionary containing the metadata (filename, family or style)
+
+        Raises
+        ------
+        FontForgeNotFound
+            If the FontForge executable is not on PATH.
+        FontForgeFailed
+            If FontForge exits with an error.
         """
+        import shutil
         import subprocess
         import platform
 
-        subprocess.run(
-            (
-                ["ffpython"]
-                if platform.system() == "Windows"
-                else ["fontforge", "-script"]
+        # Windows ships a bundled Python (ffpython); elsewhere fontforge runs
+        # the script itself.
+        if platform.system() == "Windows":
+            executable, arguments = "ffpython", []
+        else:
+            executable, arguments = "fontforge", ["-script"]
+
+        if shutil.which(executable) is None:
+            raise FontForgeNotFound(
+                "{} is either not installed or not in path. Install FontForge "
+                "from https://fontforge.org (macOS: `brew install fontforge`, "
+                "Debian/Ubuntu: `apt install fontforge`).".format(executable)
             )
+
+        result = subprocess.run(
+            [executable]
+            + arguments
             + [
                 os.path.abspath(__file__),
                 config,
                 directory,
                 outdir,
                 json.dumps(metadata),
-            ]
+            ],
+            capture_output=True,
+            text=True,
         )
+        # Without this check a failed run just left the output directory
+        # empty and the command still looked like it had worked.
+        if result.returncode != 0:
+            raise FontForgeFailed(
+                "FontForge failed to build the font (exit code {}):\n{}".format(
+                    result.returncode,
+                    (result.stderr or result.stdout).strip() or "no output",
+                )
+            )
 
     def set_properties(self):
         """Set metadata of the font from config."""
@@ -94,11 +132,30 @@ class SVGtoTTF:
             # Get outlines
             src = "{}/{}.svg".format(k, k)
             src = directory + os.sep + src
+            if not os.path.isfile(src):
+                # Usually means the config asks for more characters than the
+                # scanned form provided - e.g. the full two-page glyph list
+                # used with a single page-1 scan.
+                raise FileNotFoundError(
+                    "No traced outline for '{}' (U+{:04X}): {} is missing. The "
+                    "config lists a character the scanned sheet(s) did not "
+                    "provide.".format(chr(k), k, src)
+                )
             g.importOutlines(src, ("removeoverlap", "correctdir"))
             g.removeOverlap()
 
     def set_bearings(self, bearings):
-        """Add left and right bearing from config
+        """Add left and right bearing from config.
+
+        Every glyph in the font gets a bearing. Characters named in the table
+        get their hand-tuned values; everything else - notably the Greek
+        letters, math operators and arrows, which have no tuned entries -
+        falls back to "Default".
+
+        Iterating over the font rather than over the table is what makes that
+        fallback happen. It also means a table entry for a character that is
+        not in this font (for instance the tuned Latin table being used with
+        a partial glyph set) is simply ignored instead of raising.
 
         Parameters
         ----------
@@ -107,19 +164,20 @@ class SVGtoTTF:
         """
         default = bearings.get("Default", [60, 60])
 
-        for k, v in bearings.items():
-            if v[0] is None:
-                v[0] = default[0]
-            if v[1] is None:
-                v[1] = default[1]
-
-            if k != "Default":
-                glyph_name = self.unicode_mapping[ord(str(k))]
-                self.font[glyph_name].left_side_bearing = v[0]
-                self.font[glyph_name].right_side_bearing = v[1]
+        for codepoint, glyph_name in self.unicode_mapping.items():
+            left, right = bearings.get(chr(codepoint), [None, None])
+            glyph = self.font[glyph_name]
+            glyph.left_side_bearing = default[0] if left is None else left
+            glyph.right_side_bearing = default[1] if right is None else right
 
     def set_kerning(self, table):
         """Set kerning values in the font.
+
+        Note on "seperation" (sic - the key name is kept as it is so existing
+        config files keep working): it is the optical gap FontForge aims to
+        leave between two glyphs when autokerning. At 0 it packs them until
+        they visually touch, which turned pairs like "ij", "il" and "in" into
+        single blobs in every font this pipeline produced.
 
         Parameters
         ----------
@@ -141,10 +199,8 @@ class SVGtoTTF:
             kerning_table = table.get("table", False)
             if not kerning_table:
                 raise ValueError("Kerning offsets not found in the config file.")
-            flatten_list = (
-                lambda y: [x for a in y for x in flatten_list(a)]
-                if type(y) is list
-                else [y]
+            flatten_list = lambda y: (
+                [x for a in y for x in flatten_list(a)] if type(y) is list else [y]
             )
             offsets = [0 if x is None else x for x in flatten_list(kerning_table)]
             self.font.addKerningClass("kern", "kern-1", rows, cols, offsets)
@@ -179,10 +235,9 @@ class SVGtoTTF:
         self.font.generate(outfile)
 
     def convert_main(self, config_file, directory, outdir, metadata):
-        try:
-            self.font = fontforge.font()
-        except:
-            import fontforge
+        # Only importable inside FontForge's own Python, which is why this
+        # module re-runs itself under `fontforge -script` (see convert()).
+        import fontforge
 
         with open(config_file) as f:
             self.config = json.load(f)
