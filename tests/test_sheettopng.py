@@ -105,6 +105,10 @@ class TestSHEETtoPNG(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.converter.convert_pages(["only_one_page.png"], self.directory, CONFIG)
 
+    def test_a_directory_is_not_accepted_as_a_sheet(self):
+        with self.assertRaises(IsADirectoryError):
+            self.converter.convert(self.sheets_path, self.directory, CONFIG)
+
     def test_unreadable_sheet_raises_a_clear_error(self):
         missing = os.path.join(self.directory, "not_an_image.jpg")
         with self.assertRaises(SheetDetectionError) as caught:

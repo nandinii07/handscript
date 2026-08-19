@@ -1,9 +1,10 @@
 import os
 import shutil
+import tempfile
 import unittest
 from unittest import mock
 
-from handwrite.pngtosvg import PNGtoSVG, PotraceNotFound
+from handwrite.pngtosvg import PNGtoSVG, PotraceNotFound, PotraceFailed
 
 NEEDS_POTRACE = unittest.skipIf(
     shutil.which("potrace") is None, "potrace not installed"
@@ -35,6 +36,30 @@ class TestPNGtoSVG(unittest.TestCase):
                     self.assertTrue(os.path.exists(root + os.sep + f[0:-4] + ".svg"))
                     os.remove(root + os.sep + f[0:-4] + ".bmp")
                     os.remove(root + os.sep + f[0:-4] + ".svg")
+
+    @NEEDS_POTRACE
+    def test_potrace_failing_is_reported(self):
+        # potrace is installed but cannot trace this: the failure has to
+        # surface here rather than later as a missing .svg, or as a font with
+        # a silently blank glyph.
+        directory = tempfile.mkdtemp()
+        try:
+            broken = os.path.join(directory, "broken.bmp")
+            with open(broken, "w", encoding="utf-8") as handle:
+                handle.write("this is not a bitmap")
+
+            with self.assertRaises(PotraceFailed) as caught:
+                self.converter.bmpToSvg(broken)
+
+            message = str(caught.exception)
+            self.assertIn("potrace failed", message)
+            self.assertIn("broken.bmp", message)
+            # potrace leaves a partial .svg behind on failure, which is
+            # exactly why the non-zero exit has to be raised: going by "did a
+            # file appear?" would treat the failure as a success and hand
+            # FontForge an empty glyph.
+        finally:
+            shutil.rmtree(directory)
 
     def test_missing_potrace_is_reported_clearly(self):
         with mock.patch.dict(os.environ, {"PATH": ""}):
