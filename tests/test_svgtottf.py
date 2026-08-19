@@ -55,6 +55,17 @@ class TestSVGtoTTF(unittest.TestCase):
         self.converter.convert(self.characters_dir, self.temp, self.config)
         self.assertTrue(os.path.exists(os.path.join(self.temp, "MyFont (1) (1).ttf")))
 
+    def test_output_directory_is_created_if_missing(self):
+        # A first-time user points --output at a directory that does not exist
+        # yet. FontForge does not create it, and used to fail with a bare
+        # "Font generation failed".
+        missing = os.path.join(self.temp, "does", "not", "exist")
+        self.assertFalse(os.path.exists(missing))
+
+        self.converter.convert(self.characters_dir, missing, self.config, self.metadata)
+
+        self.assertTrue(os.path.exists(os.path.join(missing, "CustomFont.ttf")))
+
     def test_glyph_without_an_outline_is_reported(self):
         # The full two-page glyph list against a page-1-only directory: the
         # error has to name the character that has no traced outline rather

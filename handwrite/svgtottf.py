@@ -222,6 +222,11 @@ class SVGtoTTF:
         if filename is None:
             raise NameError("filename not found in config file.")
 
+        # FontForge will not create the directory itself: generating into one
+        # that does not exist fails with a bare "Font generation failed",
+        # which says nothing about the actual problem.
+        os.makedirs(outdir, exist_ok=True)
+
         outfile = str(
             outdir
             + os.sep
