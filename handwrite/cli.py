@@ -8,7 +8,7 @@ import tempfile
 from handwrite.sheettopng import SHEETtoPNG, SheetDetectionError
 from handwrite.pngtosvg import PNGtoSVG, PotraceNotFound, PotraceFailed
 from handwrite.svgtottf import SVGtoTTF, FontForgeNotFound, FontForgeFailed
-from handwrite.characters import EXISTING_CHARS
+from handwrite.characters import EXISTING_CHARS, PAGES
 
 # Things that are the user's problem rather than a bug: a bad path, a scan
 # that could not be read, a missing external tool. These are reported as a
@@ -56,10 +56,16 @@ def run(sheets, output_directory, characters_dir, config, metadata):
     """
     if isinstance(sheets, list):
         SHEETtoPNG().convert_pages(sheets, characters_dir, config)
+        # How much of a box the writer filled varies from page to page, so
+        # the font stage is told which characters came from which page and
+        # evens the sizes out.
+        groups = [page["chars"] for page in PAGES]
     else:
         SHEETtoPNG().convert(sheets, characters_dir, config)
+        groups = None  # a single page has nothing to be consistent with
+
     PNGtoSVG().convert(directory=characters_dir)
-    SVGtoTTF().convert(characters_dir, output_directory, config, metadata)
+    SVGtoTTF().convert(characters_dir, output_directory, config, metadata, groups)
 
 
 def converters(sheet, output_directory, directory=None, config=None, metadata=None):

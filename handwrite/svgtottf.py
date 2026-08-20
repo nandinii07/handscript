@@ -19,6 +19,60 @@ class FontForgeFailed(Exception):
     """Raised when FontForge runs but does not produce a font."""
 
 
+def _median(values):
+    """Middle value of a list. Written out because FontForge runs this file
+    under its own interpreter, so the fewer imports it needs, the better."""
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2.0
+
+
+def scale_plan(measurements, limit=2.0):
+    """Work out each page's correction from measured ink summaries.
+
+    Separated from FontForge deliberately: this is the whole decision, and
+    keeping it as plain arithmetic means it can be tested directly instead of
+    only through a built font.
+
+    Parameters
+    ----------
+    measurements : list
+        One ``(median ink height, median ink bottom)`` per page, in page
+        order, or None for a page nothing could be measured on.
+    limit : float
+        Largest correction allowed in either direction.
+
+    Returns
+    -------
+    list of tuple
+        ``(page index, factor, from_bottom, to_bottom)`` for each page that
+        needs correcting. The first page is the reference and never appears,
+        which is what leaves the Latin letters untouched.
+    """
+    if len(measurements) < 2 or measurements[0] is None:
+        return []
+
+    reference_height, reference_bottom = measurements[0]
+    plan = []
+    for index, measured in enumerate(measurements[1:], start=1):
+        if measured is None:
+            continue
+        height, bottom = measured
+        if height <= 0:
+            continue
+
+        factor = reference_height / height
+        if not 1.0 / limit <= factor <= limit:
+            # Beyond this the measurement is not describing handwriting -
+            # a mostly blank page, say - and "correcting" it would distort
+            # the font rather than tidy it.
+            continue
+        plan.append((index, factor, bottom, reference_bottom))
+    return plan
+
+
 def source_digest(directory, glyphs):
     """Return a short digest of the traced outlines a font is built from.
 
@@ -51,7 +105,7 @@ def source_digest(directory, glyphs):
 
 
 class SVGtoTTF:
-    def convert(self, directory, outdir, config, metadata=None):
+    def convert(self, directory, outdir, config, metadata=None, groups=None):
         """Convert a directory with SVG images to TrueType Font.
 
         Calls a subprocess to the run this script with Fontforge Python
@@ -67,6 +121,10 @@ class SVGtoTTF:
             Path to config file.
         metadata : dict
             Dictionary containing the metadata (filename, family or style)
+        groups : list of list of int, optional
+            Codepoints per form page, in page order. Given these, glyph sizes
+            are normalised across pages (see normalize_glyph_scale). Left out,
+            the glyphs are built exactly as traced.
 
         Raises
         ------
@@ -107,6 +165,7 @@ class SVGtoTTF:
                 directory,
                 outdir,
                 json.dumps(metadata),
+                json.dumps(groups or []),
             ],
             capture_output=True,
             text=True,
@@ -187,6 +246,78 @@ class SVGtoTTF:
                 )
             g.importOutlines(src, ("removeoverlap", "correctdir"))
             g.removeOverlap()
+
+    def _ink_summary(self, group):
+        """Return (median ink height, median ink bottom) for a page's glyphs.
+
+        Medians rather than extremes: a page holds everything from a full
+        stop to an integral sign, and one unusually tall or short character
+        must not decide the scale for the rest.
+        """
+        heights, bottoms = [], []
+        for codepoint in group:
+            name = self.unicode_mapping.get(codepoint)
+            if name is None:
+                continue
+            xmin, ymin, xmax, ymax = self.font[name].boundingBox()
+            if ymax <= ymin:
+                continue  # empty glyph, nothing to measure
+            heights.append(ymax - ymin)
+            bottoms.append(ymin)
+
+        if not heights:
+            return None
+        return _median(heights), _median(bottoms)
+
+    def normalize_glyph_scale(self, groups, limit=2.0):
+        """Bring every page's glyphs to the size and footing of the first page.
+
+        How big a character comes out depends on how much of its box the
+        writer filled, and that varies from page to page - one filled 41% of
+        the box, another 30%. The pipeline scales each box to a fixed bitmap,
+        so that difference survives all the way into the font and the Greek
+        and mathematical characters end up visibly smaller than the Latin
+        ones, sitting higher above the baseline as well.
+
+        Each page after the first is corrected by ONE similarity transform,
+        shared by every glyph on that page: a uniform scale (so shapes and
+        aspect ratios are untouched) plus a vertical shift onto the reference
+        page's footing. Because the whole page moves together, the sizes of
+        characters *relative to each other* - a full stop against a capital -
+        are exactly as written. Only the page as a whole changes.
+
+        The first group is the reference and is never transformed, which is
+        what keeps the Latin letters and digits pixel-for-pixel as they were.
+
+        Parameters
+        ----------
+        groups : list of list of int
+            Codepoints per form page, in page order.
+        limit : float
+            Refuse to scale by more than this factor either way. A correction
+            beyond it means the measurement is not describing handwriting -
+            a mostly blank page, say - and forcing it would distort the font
+            rather than tidy it.
+        """
+        import psMat
+
+        groups = [group for group in groups if group]
+        if len(groups) < 2:
+            return
+
+        measurements = [self._ink_summary(group) for group in groups]
+        for index, factor, from_bottom, to_bottom in scale_plan(measurements, limit):
+            # Move the page's own footing to the origin, scale about it, then
+            # set it down on the reference page's footing. A single uniform
+            # scale, so shapes and aspect ratios come through untouched.
+            matrix = psMat.compose(
+                psMat.translate(0, -from_bottom),
+                psMat.compose(psMat.scale(factor), psMat.translate(0, to_bottom)),
+            )
+            for codepoint in groups[index]:
+                name = self.unicode_mapping.get(codepoint)
+                if name is not None:
+                    self.font[name].transform(matrix)
 
     def set_bearings(self, bearings):
         """Add left and right bearing from config.
@@ -283,7 +414,7 @@ class SVGtoTTF:
         sys.stderr.write("\nGenerating %s...\n" % outfile)
         self.font.generate(outfile)
 
-    def convert_main(self, config_file, directory, outdir, metadata):
+    def convert_main(self, config_file, directory, outdir, metadata, groups="[]"):
         # Only importable inside FontForge's own Python, which is why this
         # module re-runs itself under `fontforge -script` (see convert()).
         import fontforge
@@ -300,6 +431,11 @@ class SVGtoTTF:
         self.set_properties()
         self.add_glyphs(directory)
 
+        # Even out the size difference between form pages before any spacing
+        # is worked out, since the bearings and kerning below depend on how
+        # big the glyphs actually are.
+        self.normalize_glyph_scale(json.loads(groups))
+
         # bearing table
         self.set_bearings(self.config["typography_parameters"].get("bearing_table", {}))
 
@@ -314,6 +450,8 @@ class SVGtoTTF:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
+    # The page grouping is optional, so both the four and five argument forms
+    # are accepted.
+    if len(sys.argv) not in (5, 6):
         raise ValueError("Incorrect call to SVGtoTTF")
-    SVGtoTTF().convert_main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+    SVGtoTTF().convert_main(*sys.argv[1:])

@@ -104,6 +104,45 @@ def mapped_codepoints(path):
     return set(_character_map(data, tables["cmap"][0]))
 
 
+def glyph_bounds(path):
+    """Return {codepoint: (xMin, yMin, xMax, yMax)} in font units.
+
+    These are the bounds stored in the glyph header, rounded to whole units,
+    so they are a reliable measure of size for anything but the very smallest
+    marks.
+    """
+    with open(path, "rb") as font_file:
+        data = font_file.read()
+    tables = _table_directory(data)
+
+    head = tables["head"][0]
+    long_offsets = struct.unpack(">h", data[head + 50 : head + 52])[0]
+    glyph_count = struct.unpack(
+        ">H", data[tables["maxp"][0] + 4 : tables["maxp"][0] + 6]
+    )[0]
+
+    loca = tables["loca"][0]
+    if long_offsets:
+        offsets = [
+            struct.unpack(">I", data[loca + 4 * i : loca + 4 * i + 4])[0]
+            for i in range(glyph_count + 1)
+        ]
+    else:
+        offsets = [
+            2 * struct.unpack(">H", data[loca + 2 * i : loca + 2 * i + 2])[0]
+            for i in range(glyph_count + 1)
+        ]
+
+    glyf = tables["glyf"][0]
+    bounds = {}
+    for codepoint, glyph in _character_map(data, tables["cmap"][0]).items():
+        if glyph >= glyph_count or offsets[glyph] == offsets[glyph + 1]:
+            continue  # empty glyph, such as the space
+        at = glyf + offsets[glyph]
+        bounds[codepoint] = struct.unpack(">hhhh", data[at + 2 : at + 10])
+    return bounds
+
+
 def metrics(path, characters):
     """Return {character: (advance_width, left_side_bearing)} in font units.
 
