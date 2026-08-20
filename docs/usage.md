@@ -108,6 +108,20 @@ The syntax is a small subset of LaTeX's, and nothing more:
 | `A_{ij}`      | braces lower the whole group                |
 | `SO_4^{2-}`   | both, with a grouped superscript            |
 
+Four structures go beyond a single line of characters:
+
+| You type            | You get                                        |
+| ------------------- | ---------------------------------------------- |
+| `{a}/{b}`           | a stacked fraction with a bar between           |
+| `√{x+1}`            | a square root, with the line over the radicand  |
+| `Σ__{i=1}^^{n}`     | limits set below and above                      |
+| `v^^{→}`            | your handwritten arrow drawn over the `v`       |
+
+`^^` puts what follows above, `__` puts it below. Braces before them make the
+whole group the base, so `{lim}__{x→0}` hangs the limit under all of "lim"
+rather than under the "m". They combine: `{-b ± √{b^2-4ac}}/{2a}` is the
+quadratic formula, and `{d}/{dx}` a derivative.
+
 Rules worth knowing:
 
 - Without braces, `^` and `_` apply to exactly **one** character, so `x^10`
@@ -116,8 +130,14 @@ Rules worth knowing:
   or `_`, so `f{x}` is plain text and prints as written.
 - Everything else - Greek letters, operators, arrows - is ordinary text and
   is printed as it is, in your handwriting.
-- One level only: `x^{a^2}` is rejected rather than silently misprinted.
-  There are no fractions, roots, matrices or integrals.
+- Scripts are one level only: `x^{a^2}` is rejected rather than silently
+  misprinted. A fraction, radical or stack may contain scripts, and may
+  contain each other, so `{√{2}}/{2}` works.
+- There are no matrices or other side-by-side grids, and no aligned
+  multi-line equations.
+- If your font has no glyph for a character - anything you did not write on
+  the form - the command says so rather than letting the browser quietly
+  substitute another font. `--strict` turns that warning into a refusal.
 
 Anything malformed (`x^`, `x^{12`, `x^{}`) stops with a message naming the
 position of the problem, instead of producing a wrong-looking formula.

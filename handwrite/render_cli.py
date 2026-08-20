@@ -18,9 +18,15 @@ Render every line of a text file::
 
 import sys
 import argparse
+import warnings
 
 from handwrite.notation import NotationError
-from handwrite.renderer import render_to_file, FontNotFound
+from handwrite.renderer import (
+    render_to_file,
+    FontNotFound,
+    MissingGlyphs,
+    MissingGlyphWarning,
+)
 
 # Shown when the user runs the command with no formulas at all, so the demo
 # is always one command away.
@@ -72,6 +78,11 @@ def main():
         default=48,
         help="Size of normal text in pixels (default: %(default)s)",
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Stop if the font cannot draw a character, instead of warning",
+    )
 
     args = parser.parse_args()
 
@@ -85,10 +96,18 @@ def main():
     # Bad notation and a missing font are ordinary user mistakes, so report
     # them as a short message instead of a Python traceback.
     try:
-        output_path = render_to_file(
-            formulas, args.font, args.output, font_size=args.font_size
-        )
-    except (NotationError, FontNotFound) as error:
+        with warnings.catch_warnings(record=True) as raised:
+            warnings.simplefilter("always", MissingGlyphWarning)
+            output_path = render_to_file(
+                formulas,
+                args.font,
+                args.output,
+                font_size=args.font_size,
+                strict=args.strict,
+            )
+        for warning in raised:
+            print("Warning: {}".format(warning.message), file=sys.stderr)
+    except (NotationError, FontNotFound, MissingGlyphs) as error:
         sys.exit("Error: {}".format(error))
 
     print("Wrote {} ({} line(s)).".format(output_path, len(formulas)))
