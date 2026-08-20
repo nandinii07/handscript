@@ -26,12 +26,15 @@ def render_synthetic_page(page, page_index):
 
     The box positions come from `formgen` itself rather than being recomputed
     here, so this can never disagree with the form that is actually printed.
+    The heading is drawn for the same reason: the real form prints one above
+    the grid, and page validation uses it to tell an upright scan from an
+    upside down one, so a stand-in without it would not be a stand-in.
     """
     chars = page["chars"]
     _, _, box_height = formgen.cell_geometry()
 
     try:
-        label_font, _ = formgen.resolve_fonts([chr(c) for c in chars])
+        label_font, title_font = formgen.resolve_fonts([chr(c) for c in chars])
     except formgen.FormFontNotFound as error:
         # No font on this machine can draw Greek/math labels, so there is no
         # way to fake a filled-in page. Nothing is broken - skip.
@@ -40,6 +43,13 @@ def render_synthetic_page(page, page_index):
 
     image = Image.new("RGB", (formgen.PAGE_WIDTH, formgen.PAGE_HEIGHT), "white")
     draw = ImageDraw.Draw(image)
+
+    draw.text(
+        (formgen.MARGIN, formgen.MARGIN // 2),
+        "Handwrite - Page {} of {}".format(page_index + 1, len(PAGES)),
+        fill="black",
+        font=title_font,
+    )
 
     for index, x0, y0, x1, y1 in formgen.iter_boxes(page):
         draw.rectangle([x0, y0, x1, y1], outline="black", width=2)

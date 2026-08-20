@@ -15,6 +15,100 @@ class SheetDetectionError(Exception):
     """Raised when a scanned sheet cannot be read or its boxes not found."""
 
 
+class PageValidationError(SheetDetectionError):
+    """Raised when a scan is not the form page it is being processed as.
+
+    A subclass, so callers already handling SheetDetectionError - the CLI
+    among them - report this the same way.
+    """
+
+
+# A pixel darker than this is taken to be pen. The "do not write here" cross
+# printed in an unused box is a light grey, well above it, so an empty box
+# reads as empty even though something is printed in it.
+INK_LEVEL = 128
+
+# A box with more than this fraction of dark pixels has been written in.
+# Measured on real filled forms: written boxes run from about 0.008 upwards,
+# unused ones sit at 0.000.
+INK_FRACTION = 0.005
+
+
+def _read_and_find_boxes(sheet_image, threshold_value):
+    """Read a scan and return it with its four-sided contours, largest first."""
+    image = cv2.imread(sheet_image)
+    if image is None:
+        raise SheetDetectionError(
+            "Could not read '{}'. Check the path exists and is an image "
+            "file OpenCV can open (jpg, png, bmp, tif).".format(sheet_image)
+        )
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Threshold and filter the image for better contour detection
+    _, thresh = cv2.threshold(gray, threshold_value, 255, 1)
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    close = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_kernel, iterations=2)
+
+    # Search for contours.
+    contours, _hierarchy = cv2.findContours(
+        close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    # Filter contours based on number of sides and then reverse sort by area.
+    contours = sorted(
+        filter(
+            lambda cnt: len(
+                cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
+            )
+            == 4,
+            contours,
+        ),
+        key=cv2.contourArea,
+        reverse=True,
+    )
+    return image, gray, contours
+
+
+def _count_clusters(values, tolerance):
+    """How many distinct positions are in a sorted list of coordinates."""
+    if not values:
+        return 0
+    count = 1
+    for previous, current in zip(values, values[1:]):
+        if current - previous > tolerance:
+            count += 1
+    return count
+
+
+def _boxes_in_reading_order(rectangles, cols, rows):
+    """Sort box rectangles the way save_images expects them: rows, then columns."""
+    ordered = sorted(rectangles, key=lambda rect: rect[1])
+    result = []
+    for row in range(rows):
+        result.extend(
+            sorted(ordered[cols * row : cols * (row + 1)], key=lambda r: r[0])
+        )
+    return result
+
+
+def _trailing_empty_boxes(gray, ordered):
+    """Count the unwritten boxes at the end of a page.
+
+    This is what tells the pages apart. Page 1 fills every box, page 2 leaves
+    seven at the end and page 3 leaves two, so the count identifies the page
+    without reading anything printed on it.
+    """
+    empty = 0
+    for x, y, width, height in reversed(ordered):
+        inside = gray[
+            y + height // 6 : y + 5 * height // 6, x + width // 6 : x + 5 * width // 6
+        ]
+        if inside.size and (inside < INK_LEVEL).mean() > INK_FRACTION:
+            break
+        empty += 1
+    return empty
+
+
 class SHEETtoPNG:
     """Converter class to convert input sample sheet(s) to character PNGs."""
 
@@ -84,6 +178,16 @@ class SHEETtoPNG:
                 )
             )
 
+        # Check every page before extracting anything. A scan in the wrong
+        # place or the wrong way up still has the right number of boxes, so
+        # without this the pipeline would happily file each character under
+        # its neighbour's codepoint and build a font that looks fine and is
+        # entirely wrong.
+        with open(config) as f:
+            threshold_value = json.load(f).get("threshold_value", 200)
+        for number, (sheet, page) in enumerate(zip(sheets, pages), start=1):
+            self.validate_page(sheet, page, number, len(pages), threshold_value)
+
         for sheet, page in zip(sheets, pages):
             self.convert(
                 sheet,
@@ -92,6 +196,87 @@ class SHEETtoPNG:
                 cols=page["cols"],
                 rows=page["rows"],
                 characters=page["chars"],
+            )
+
+    def validate_page(self, sheet, page, number, total, threshold_value=200):
+        """Check a scan really is the form page it is about to be read as.
+
+        Three things about the printed form give this away without reading a
+        single character:
+
+        * the grid is `cols` across and `rows` down, so a sheet turned on its
+          side comes out transposed;
+        * the title is printed above the grid, so an upside down sheet has
+          its ink below instead;
+        * each page leaves a different number of boxes crossed out at the
+          end - none, seven, two - so counting the unwritten boxes at the
+          bottom says which page this is.
+
+        Raises
+        ------
+        PageValidationError
+            With what is wrong and what to do about it.
+        """
+        cols, rows = page["cols"], page["rows"]
+        _image, gray, contours = _read_and_find_boxes(sheet, threshold_value)
+
+        if len(contours) < cols * rows:
+            raise PageValidationError(
+                "Page {} of {}: found only {} box(es) on '{}', expected {}. "
+                "The scan may be cropped, skewed or too light - try "
+                "rescanning, and check the pages are in order.".format(
+                    number, total, len(contours), sheet, cols * rows
+                )
+            )
+
+        rectangles = [cv2.boundingRect(contour) for contour in contours[: cols * rows]]
+        widths = sorted(rect[2] for rect in rectangles)
+        heights = sorted(rect[3] for rect in rectangles)
+        box_width = widths[len(widths) // 2]
+        box_height = heights[len(heights) // 2]
+
+        across = _count_clusters(
+            sorted(x + w // 2 for x, _y, w, _h in rectangles), box_width // 2
+        )
+        down = _count_clusters(
+            sorted(y + h // 2 for _x, y, _w, h in rectangles), box_height // 2
+        )
+        if (across, down) != (cols, rows):
+            raise PageValidationError(
+                "Page {} of {} ('{}') has the wrong grid: its boxes form {} by "
+                "{}, but page {} is {} by {}. Either the scan is rotated - it "
+                "must be upright and in portrait, the same way up as it was "
+                "printed - or this is not page {}. The scans are matched to "
+                "the form by sorted filename.".format(
+                    number, total, sheet, across, down, number, cols, rows, number
+                )
+            )
+
+        top = min(y for _x, y, _w, _h in rectangles)
+        bottom = max(y + h for _x, y, _w, h in rectangles)
+        above = int((gray[:top] < INK_LEVEL).sum())
+        below = int((gray[bottom:] < INK_LEVEL).sum())
+        if below > above:
+            raise PageValidationError(
+                "Page {} of {} ('{}') looks upside down: the printed heading "
+                "should be above the boxes, but the ink is below them. Turn "
+                "the page the right way up and scan it again.".format(
+                    number, total, sheet
+                )
+            )
+
+        expected_empty = cols * rows - len(page["chars"])
+        empty = _trailing_empty_boxes(
+            gray, _boxes_in_reading_order(rectangles, cols, rows)
+        )
+        if empty != expected_empty:
+            raise PageValidationError(
+                "Page {} of {} ('{}') does not look like page {}: it ends with "
+                "{} unwritten box(es), and page {} should end with {}. Check "
+                "the scans are in page order - they are matched by sorted "
+                "filename - and that no box was left blank by mistake.".format(
+                    number, total, sheet, number, empty, number, expected_empty
+                )
             )
 
     def detect_characters(self, sheet_image, threshold_value, cols=8, rows=10):
@@ -125,37 +310,7 @@ class SHEETtoPNG:
             If the image cannot be read, or fewer than rows*cols boxes are
             found on it.
         """
-        # Read the image and convert to grayscale
-        image = cv2.imread(sheet_image)
-        if image is None:
-            raise SheetDetectionError(
-                "Could not read '{}'. Check the path exists and is an image "
-                "file OpenCV can open (jpg, png, bmp, tif).".format(sheet_image)
-            )
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Threshold and filter the image for better contour detection
-        _, thresh = cv2.threshold(gray, threshold_value, 255, 1)
-        close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        close = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, close_kernel, iterations=2)
-
-        # Search for contours.
-        contours, h = cv2.findContours(
-            close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-        )
-
-        # Filter contours based on number of sides and then reverse sort by area.
-        contours = sorted(
-            filter(
-                lambda cnt: len(
-                    cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True)
-                )
-                == 4,
-                contours,
-            ),
-            key=cv2.contourArea,
-            reverse=True,
-        )
+        image, gray, contours = _read_and_find_boxes(sheet_image, threshold_value)
 
         # Every box on the sheet has to have been found, otherwise the
         # position-to-character mapping silently shifts and the font ends up
