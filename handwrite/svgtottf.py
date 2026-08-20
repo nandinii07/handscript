@@ -1,7 +1,14 @@
 import sys
 import os
 import json
-import uuid
+import hashlib
+
+# FontForge stamps the current time into the font's `head` and `FFTM` tables,
+# so two builds of the same handwriting are never byte-identical. It honours
+# SOURCE_DATE_EPOCH, the reproducible-builds convention, so a fixed default is
+# supplied here. An epoch already set in the environment is left alone, which
+# is what that convention asks for.
+DEFAULT_SOURCE_DATE_EPOCH = "1609459200"  # 2021-01-01T00:00:00Z
 
 
 class FontForgeNotFound(Exception):
@@ -10,6 +17,37 @@ class FontForgeNotFound(Exception):
 
 class FontForgeFailed(Exception):
     """Raised when FontForge runs but does not produce a font."""
+
+
+def source_digest(directory, glyphs):
+    """Return a short digest of the traced outlines a font is built from.
+
+    This is what the font's UniqueID is derived from. The ID has two jobs that
+    pull in opposite directions: it has to be the *same* for two builds of the
+    same handwriting, or no two builds can ever be compared, and *different*
+    for different handwriting, or two people's fonts collide in the operating
+    system's font cache. A random uuid satisfied only the second.
+
+    Hashing the outlines satisfies both, because the outlines are precisely
+    what makes one person's font different from another's.
+
+    Parameters
+    ----------
+    directory : str
+        Path to the directory of traced SVGs.
+    glyphs : list of int
+        Codepoints the font is being built from.
+    """
+    digest = hashlib.sha256()
+    for codepoint in sorted(glyphs):
+        path = os.path.join(directory, str(codepoint), "{}.svg".format(codepoint))
+        if not os.path.isfile(path):
+            # add_glyphs reports a missing outline with a far better message.
+            continue
+        digest.update(str(codepoint).encode("utf-8"))
+        with open(path, "rb") as outline:
+            digest.update(outline.read())
+    return digest.hexdigest()[:16]
 
 
 class SVGtoTTF:
@@ -55,6 +93,11 @@ class SVGtoTTF:
                 "Debian/Ubuntu: `apt install fontforge`).".format(executable)
             )
 
+        # Pass the whole environment through (PATH and friends still matter),
+        # with a fixed build timestamp added unless the caller set one.
+        environment = dict(os.environ)
+        environment.setdefault("SOURCE_DATE_EPOCH", DEFAULT_SOURCE_DATE_EPOCH)
+
         result = subprocess.run(
             [executable]
             + arguments
@@ -67,6 +110,7 @@ class SVGtoTTF:
             ],
             capture_output=True,
             text=True,
+            env=environment,
         )
         # Without this check a failed run just left the output directory
         # empty and the command still looked like it had worked.
@@ -105,7 +149,7 @@ class SVGtoTTF:
             self.config["sfnt_names"]["PostScriptName"] = family + "-" + style
             self.config["sfnt_names"]["SubFamily"] = style
 
-        self.config["sfnt_names"]["UniqueID"] = family + " " + str(uuid.uuid4())
+        self.config["sfnt_names"]["UniqueID"] = family + " " + self.source_digest
 
         for k, v in self.config.get("sfnt_names", {}).items():
             self.font.appendSFNTName(str(lang), str(k), str(v))
@@ -250,6 +294,9 @@ class SVGtoTTF:
 
         self.font = fontforge.font()
         self.unicode_mapping = {}
+        # Derived before the glyphs are imported because set_properties needs
+        # it for the UniqueID.
+        self.source_digest = source_digest(directory, self.config["glyphs"])
         self.set_properties()
         self.add_glyphs(directory)
 

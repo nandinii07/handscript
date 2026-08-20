@@ -71,6 +71,31 @@ def _character_map(data, offset):
     return mapping
 
 
+def name_records(path):
+    """Return {name id: text} from the font's `name` table.
+
+    Name id 3 is the UniqueID, which is the one determinism depends on.
+    """
+    with open(path, "rb") as font_file:
+        data = font_file.read()
+    offset = _table_directory(data)["name"][0]
+
+    count, strings_at = struct.unpack(">HH", data[offset + 2 : offset + 6])
+    strings = offset + strings_at
+
+    records = {}
+    for index in range(count):
+        record = offset + 6 + 12 * index
+        platform, _, _, name_id, length, at = struct.unpack(
+            ">HHHHHH", data[record : record + 12]
+        )
+        raw = data[strings + at : strings + at + length]
+        # Platform 3 (Windows) stores UTF-16BE; platform 1 (Mac) single bytes.
+        text = raw.decode("utf-16-be" if platform == 3 else "latin1", "replace")
+        records.setdefault(name_id, text)
+    return records
+
+
 def mapped_codepoints(path):
     """Return the set of codepoints the font has a glyph for."""
     with open(path, "rb") as font_file:
