@@ -193,12 +193,19 @@ class TestJobRegistry(AppTestCase):
     def test_an_overdue_build_is_given_up_on(self):
         import time
 
+        # Job status is persisted (see app/store.py), so a build "in
+        # progress" is simulated the way the real worker thread would leave
+        # it: written to the store, not just held on the Python object.
         job = self.registry.create("A")
-        job.status = jobs.PROCESSING
-        job.started_at = time.time() - 10_000
+        self.registry.store.compare_and_update(
+            job.job_id,
+            (jobs.QUEUED,),
+            {"status": jobs.PROCESSING, "started_at": time.time() - 10_000},
+        )
 
-        self.assertEqual(self.registry.get(job.job_id).status, jobs.FAILED)
-        self.assertIn("longer than", job.error)
+        found = self.registry.get(job.job_id)
+        self.assertEqual(found.status, jobs.FAILED)
+        self.assertIn("longer than", found.error)
 
 
 if __name__ == "__main__":

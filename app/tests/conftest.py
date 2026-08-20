@@ -63,7 +63,12 @@ class AppTestCase(unittest.TestCase):
 
     def setUp(self):
         self.job_root = Path(tempfile.mkdtemp())
-        self.app = create_app(job_root=self.job_root, TESTING=True)
+        # No background cleanup thread in tests: it would outlive nothing
+        # useful in a test this short, and tests that care about cleanup call
+        # registry.cleanup_expired() directly for a deterministic result.
+        self.app = create_app(
+            job_root=self.job_root, TESTING=True, CLEANUP_INTERVAL=None
+        )
         self.registry = self.app.extensions["job_registry"]
         self.client = self.app.test_client()
 

@@ -24,7 +24,14 @@ api = Blueprint("api", __name__, url_prefix="/api")
 # chose, which is what the backend's page validation is trusting.
 PAGE_FIELDS = ("page_1", "page_2", "page_3")
 
-MAX_PAGE_BYTES = 10 * 1024 * 1024
+# Default per-page limit, used unless the running app configures its own
+# (see HANDWRITE_MAX_UPLOAD_MB) - kept so this module still works if imported
+# without going through create_app, such as in a unit test.
+DEFAULT_MAX_PAGE_BYTES = 10 * 1024 * 1024
+
+
+def _max_page_bytes() -> int:
+    return current_app.config.get("MAX_PAGE_BYTES", DEFAULT_MAX_PAGE_BYTES)
 
 
 def _error(message: str, status: int, **extra):
@@ -65,10 +72,11 @@ def _collect_pages(directory: Path) -> Tuple[List[Path], object]:
         upload.stream.seek(0)
         if size == 0:
             return [], _error("{} is empty.".format(field), 400)
-        if size > MAX_PAGE_BYTES:
+        limit = _max_page_bytes()
+        if size > limit:
             return [], _error(
                 "{} is {:.1f} MB, over the {:.0f} MB limit for one page.".format(
-                    field, size / 1024 / 1024, MAX_PAGE_BYTES / 1024 / 1024
+                    field, size / 1024 / 1024, limit / 1024 / 1024
                 ),
                 400,
             )
