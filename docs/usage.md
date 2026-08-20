@@ -6,10 +6,14 @@ There are two forms to choose from:
 
 - **`handwrite_sample.pdf`** - the original single page, 80 characters
   (A-Z, a-z, 0-9 and common punctuation).
-- **`handwrite_sample_extended.pdf`** - two pages, 113 characters. Page 1 is
+- **`handwrite_sample_extended.pdf`** - three pages, 191 characters. Page 1 is
   the same as above; page 2 adds Greek letters, math operators, arrows and
-  braces (`α β γ δ ε θ λ μ π ρ σ φ ω Δ Ω × ÷ ≠ ≤ ≥ ± ∓ ≈ ∝ ∞ √ → ← ↔ { } | °`).
-  Use this one if you want to write scientific notation.
+  braces (`α β γ δ ε θ λ μ π ρ σ φ ω Δ Ω × ÷ ≠ ≤ ≥ ± ∓ ≈ ∝ ∞ √ → ← ↔ { } | °`);
+  page 3 completes the Greek alphabet in both cases and adds calculus,
+  set, logic and geometry symbols along with the punctuation a word processor
+  inserts for you (`∫ ∑ ∏ ∂ ∇ ħ ′ · ≡ ⇒ ⇌ ∴ ∈ ⊂ ∪ ∩ ∅ ∀ ∃ ∠ ⊥ ∥ ∮ ⊕ ⊗ ≪ ≫
+  < > * ^ _ ~ # $ @ \ – — ‘ ’ “ ” …`). Use this one if you want to write
+  scientific notation.
 
 You can also regenerate the extended form yourself, which is useful if you
 want to change the character set:
@@ -46,7 +50,7 @@ Your form should look like this:
 2.  In a terminal type `handwrite [PATH TO IMAGE] [OUTPUT DIRECTORY]`.
     (You can also type `handwrite -h`, to see all the arguments you can use).
 
-    For the extended two-page form, pass the **directory** holding your page
+    For the extended three-page form, pass the **directory** holding your page
     scans instead of a single image:
 
         handwrite path/to/scans/ path/to/output/

@@ -41,7 +41,7 @@ You can get started with Handwrite [here](https://yashlamba.github.io/handwrite/
 
 There are two forms. The original `handwrite_sample.pdf` collects 80
 characters on one page. The newer `handwrite_sample_extended.pdf` collects
-113 across two pages, adding Greek letters, math operators and arrows
+191 across three pages, adding Greek in both cases, math operators, arrows
 (`α β γ δ ε θ λ μ π ρ σ φ ω Δ Ω × ÷ ≠ ≤ ≥ ± ∓ ≈ ∝ ∞ √ → ← ↔ { } | °`) - use
 that one if you want to write notation.
 
@@ -53,7 +53,7 @@ pip install handwrite            # also needs potrace and fontforge installed
 # Build a font from a single-page form:
 handwrite scan.jpg fonts/
 
-# ...or from the two-page extended form (one image per page in a directory):
+# ...or from the three-page extended form (one image per page in a directory):
 handwrite scans/ fonts/
 
 # Type notation in it:

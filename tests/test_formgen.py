@@ -14,10 +14,10 @@ import unittest
 import subprocess
 from unittest import mock
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from handwrite import formgen
-from handwrite.characters import PAGES
+from handwrite.characters import PAGES, PAGE_3, ALL_CHARS
 
 # A codepoint in the Private Use Area: no real font has a glyph for it, so a
 # page asking for it can never be drawn.
@@ -78,6 +78,86 @@ class TestGenerateForm(unittest.TestCase):
 
         dark = sum(1 for pixel in page.getdata() if pixel < 128)
         self.assertGreater(dark, 1000, "page 2 appears to be blank")
+
+
+class TestLabelPlacement(unittest.TestCase):
+    """Where a label's ink actually lands on the printed page.
+
+    The underscore used to print as a detached rule near the bottom of the
+    label band, far below its neighbours, and read as a stray line rather than
+    as the name of the character to write.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.page = PAGE_3
+        labels = [chr(c) for c in cls.page["chars"]]
+        label_font, title_font = formgen.resolve_fonts(labels)
+        cls.image = formgen._draw_page(3, 3, cls.page, label_font, title_font)
+        cls.grey = cls.image.convert("L")
+
+    def label_ink(self, character):
+        """Return (top, bottom) of the label's ink, measured from its box."""
+        index = self.page["chars"].index(ord(character))
+        for box_index, x0, y0, x1, y1 in formgen.iter_boxes(self.page):
+            if box_index != index:
+                continue
+            strip = self.grey.crop((x0, y1 + 1, x1, y1 + formgen.LABEL_HEIGHT))
+            box = strip.point(lambda p: 255 if p < 128 else 0).getbbox()
+            self.assertIsNotNone(box, "no label ink under {!r}".format(character))
+            return box[1] + 1, box[3] + 1
+        self.fail("{!r} is not on this page".format(character))
+
+    def test_underscore_label_is_clear_of_the_box_border(self):
+        top, _bottom = self.label_ink("_")
+        self.assertGreaterEqual(top, 3, "underscore label touches the border")
+
+    def test_underscore_label_sits_in_line_with_its_neighbours(self):
+        # '*', '^' and '~' share row 5 with '_'. Comparing against real
+        # neighbours keeps this honest if the label font ever changes.
+        underscore = self.label_ink("_")
+        centre = sum(underscore) / 2
+
+        for neighbour in ("*", "^", "~"):
+            with self.subTest(neighbour=neighbour):
+                low, high = self.label_ink(neighbour)
+                self.assertGreaterEqual(
+                    centre,
+                    low - 4,
+                    "underscore sits above {!r}".format(neighbour),
+                )
+                self.assertLessEqual(
+                    centre,
+                    high + 4,
+                    "underscore sits below {!r}".format(neighbour),
+                )
+
+    def test_underscore_label_stays_inside_the_label_band(self):
+        # Drifting past the band would push it towards the next row of boxes.
+        top, bottom = self.label_ink("_")
+        self.assertLess(bottom, formgen.LABEL_HEIGHT)
+
+    def test_ordinary_labels_are_not_moved(self):
+        # The lift is meant to apply to the underscore alone; every other
+        # glyph must be drawn exactly where it always was.
+        label_font, _ = formgen.resolve_fonts(["A"])
+        drawing = ImageDraw.Draw(Image.new("L", (10, 10)))
+        for character in "AaΓ∫.,-~*^…":
+            with self.subTest(character=character):
+                bbox = drawing.textbbox((0, 0), character, font=label_font)
+                self.assertEqual(formgen._below_baseline_lift(bbox, label_font), 0)
+
+    def test_the_underscore_is_the_only_label_that_is_lifted(self):
+        label_font, _ = formgen.resolve_fonts([chr(c) for c in ALL_CHARS])
+        drawing = ImageDraw.Draw(Image.new("L", (10, 10)))
+        lifted = [
+            chr(c)
+            for c in ALL_CHARS
+            if formgen._below_baseline_lift(
+                drawing.textbbox((0, 0), chr(c), font=label_font), label_font
+            )
+        ]
+        self.assertEqual(lifted, ["_"])
 
 
 class TestFormGenCommand(unittest.TestCase):

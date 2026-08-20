@@ -32,6 +32,9 @@ TITLE_HEIGHT = int(0.9 * DPI)
 LABEL_HEIGHT = int(0.3 * DPI)
 CELL_GAP = int(0.12 * DPI)
 
+# Distance from the bottom of a box to where its label is drawn.
+LABEL_GAP = 4
+
 # The grid every page is measured against. A page may use fewer columns or
 # rows than this (page 2 only needs 5 rows), but never a different cell size:
 # cell width/height are always computed from these numbers, so a box is
@@ -203,6 +206,31 @@ def iter_boxes(page):
         yield index, x0, y0, x0 + cell_width, y0 + box_height
 
 
+def _below_baseline_lift(bbox, font):
+    """Return how far to lift a label whose ink sits below the baseline.
+
+    Labels are positioned from the font's ascender line, which puts every
+    ordinary glyph's ink near the middle of the label band. A glyph drawn
+    entirely at or below the baseline lands right at the bottom of that band
+    instead: on the printed form the underscore came out as a low, detached
+    rule that reads as a stray line rather than as the character's name.
+
+    Lifting such a label until its ink is centred in the band puts it back in
+    line with its neighbours. Ordinary glyphs return 0 and are drawn exactly
+    where they always were - in the full 191 character set the underscore is
+    the only label this applies to.
+
+    This affects the printed label only. Nothing about how a handwritten
+    underscore is scanned, traced or built into the font goes through here.
+    """
+    ascent, _descent = font.getmetrics()
+    if bbox[1] < ascent:
+        return 0
+
+    ink_centre = LABEL_GAP + (bbox[1] + bbox[3]) / 2
+    return -round(ink_centre - LABEL_HEIGHT / 2)
+
+
 def _draw_page(page_number, total_pages, page, label_font, title_font):
     """Render a single form page (one PIL Image) for the given page definition."""
     chars = page["chars"]
@@ -232,7 +260,8 @@ def _draw_page(page_number, total_pages, page, label_font, title_font):
             bbox = draw.textbbox((0, 0), label, font=label_font)
             label_w = bbox[2] - bbox[0]
             label_x = x0 + (cell_width - label_w) // 2
-            draw.text((label_x, y1 + 4), label, fill="black", font=label_font)
+            label_y = y1 + LABEL_GAP + _below_baseline_lift(bbox, label_font)
+            draw.text((label_x, label_y), label, fill="black", font=label_font)
         else:
             # Leftover box on this page (cols*rows > number of characters).
             # IMPORTANT: the border must still be solid black, same as a

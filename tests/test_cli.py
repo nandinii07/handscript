@@ -7,6 +7,7 @@ import subprocess
 from handwrite.characters import EXISTING_CHARS, ALL_CHARS, PAGES
 
 from tests.test_sheettopng import render_synthetic_page
+from tests.fontmetrics import mapped_codepoints
 
 # The font stages shell out to potrace and FontForge. Where those are not
 # installed the pipeline cannot run at all, so skip rather than fail - but the
@@ -87,7 +88,15 @@ class TestCLI(unittest.TestCase):
                 ),
                 "no traced outline for {!r}".format(chr(codepoint)),
             )
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir, "Extended.ttf")))
+
+        font = os.path.join(self.temp_dir, "Extended.ttf")
+        self.assertTrue(os.path.exists(font))
+
+        # The .ttf is the product, so check the font itself contains every
+        # character rather than trusting that the SVGs made it in.
+        mapped = mapped_codepoints(font)
+        missing = [chr(c) for c in ALL_CHARS if c not in mapped]
+        self.assertEqual(missing, [], "font is missing: {}".format(missing))
 
     def test_directory_with_wrong_page_count_fails_clearly(self):
         # test_data/sheettopng holds a single page-1 scan, but a directory is
