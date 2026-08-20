@@ -8,6 +8,7 @@ from flask import Flask, jsonify
 
 from app.api import api
 from app.jobs import JobRegistry
+from app.web import web
 
 # The committed three page form, served as-is. The backend's form generator is
 # not run here: the PDF in the repository is the one that was printed, filled
@@ -43,6 +44,7 @@ def create_app(job_root: Optional[Path] = None, **config) -> Flask:
     application.extensions["job_registry"] = registry
 
     application.register_blueprint(api)
+    application.register_blueprint(web)
 
     @application.errorhandler(413)
     def _too_large(_error):

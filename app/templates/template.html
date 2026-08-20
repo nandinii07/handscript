@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}The template — Handwrite{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+
+{% block content %}
+<p class="eyebrow">Step one</p>
+<h1>Fill in the template</h1>
+<p class="lead">
+  Three pages, 191 boxes. Write one character in each box, exactly as you
+  normally would. This is the only part that takes any real time.
+</p>
+
+<div class="btn-row">
+  <a class="btn btn-lg" href="/api/template.pdf">Download Template (PDF)</a>
+  <a class="btn btn-lg btn-secondary" href="/upload">I have filled it in</a>
+</div>
+
+<div class="section">
+  <h2>Printing</h2>
+  <ul class="checklist">
+    <li><strong>Print all three pages.</strong> Page 1 is letters and digits,
+      page 2 is Greek and operators, page 3 is the rest.</li>
+    <li><strong>Print at 100% scale</strong> — not "fit to page". Scaling shrinks
+      the boxes and leaves you less room to write.</li>
+    <li>Plain white A4 or Letter, one page per sheet.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Writing</h2>
+  <ul class="checklist">
+    <li><strong>Use a dark pen</strong> with a reasonably thick stroke. Pencil and
+      very light ink can be too faint to pick up.</li>
+    <li><strong>Write inside each box</strong>, and try not to touch the printed
+      border — ink crossing a border can confuse the box detection.</li>
+    <li>The small character printed <em>under</em> each box tells you what to
+      write in it. Sit letters on the faint grey line.</li>
+    <li><strong>Do not skip any box.</strong> A skipped box becomes a blank
+      character in your font.</li>
+    <li><strong>Leave the two crossed-out boxes on page 3 empty</strong> — but keep
+      them in the picture when you scan. They are how we tell page 3 from page 1.</li>
+  </ul>
+</div>
+
+<div class="notice notice-warn">
+  <strong>About the Greek capitals on page 3</strong>
+  Rows 2 to 4 of page 3 ask for Greek capitals, and fourteen of them look
+  exactly like Latin letters — Α Β Ε Ζ Η Ι Κ Μ Ν Ο Ρ Τ Υ Χ. They are different
+  characters even though they are the same shape. Write them just as you wrote
+  the Latin ones; if you skip them, those characters will be blank in your font.
+</div>
+
+<div class="section">
+  <h2>Scanning</h2>
+  <ul class="checklist">
+    <li>A scanner at 300 DPI is best. A phone works if you use a scanning app
+      such as Adobe Scan or the Notes app, which straighten the page for you.</li>
+    <li><strong>Keep the page flat and the whole page in frame</strong>, including
+      all four corners and the heading at the top.</li>
+    <li><strong>Do not crop</strong> the edges or the heading — the heading is how
+      we detect an upside-down page.</li>
+    <li>Even lighting, no shadow across the sheet, no glare.</li>
+    <li><strong>Upload them in order: page 1, then 2, then 3.</strong> Pages 1 and 3
+      look alike, so getting them the wrong way round would put every character
+      under the wrong letter. We check for this and will tell you.</li>
+  </ul>
+</div>
+
+<div class="btn-row">
+  <a class="btn btn-lg" href="/upload">Continue to upload</a>
+</div>
+{% endblock %}

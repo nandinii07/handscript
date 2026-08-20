@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Handwrite{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/">Hand<span>write</span></a>
+    <nav>
+      <a href="/template">Template</a>
+      <a href="/upload">Create my font</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap {% block wrapclass %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">Handwrite — your handwriting, as a font you can type with.</div>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

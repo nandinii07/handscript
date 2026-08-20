@@ -10,6 +10,7 @@ The distinction that matters to a user is the status code: 4xx is something
 they can fix by uploading different scans, 5xx is not their fault at all.
 """
 
+import re
 from typing import Tuple
 
 from handwrite import (
@@ -73,13 +74,33 @@ def is_expected(error: BaseException) -> bool:
     return any(isinstance(error, error_type) for error_type, _ in ERROR_STATUS)
 
 
+# The backend names the file it was reading, which is a server-side temporary
+# path: meaningless to whoever uploaded the page, and not something to put on
+# a web page. The name itself is worth keeping - it says which page went
+# wrong - so only the directories are dropped.
+_QUOTED_PATH = re.compile(r"'((?:[A-Za-z]:)?[\\/][^']*)'")
+
+
+def _without_server_paths(message: str) -> str:
+    """Replace any absolute path in a message with just its filename.
+
+    Both separators, because the message may have been produced on either
+    kind of host and this code has to read it on any other.
+    """
+    return _QUOTED_PATH.sub(
+        lambda match: "'{}'".format(re.split(r"[\\/]", match.group(1))[-1]), message
+    )
+
+
 def message_for(error: BaseException) -> str:
     """The text to show the user.
 
-    Expected failures keep the backend's own wording. Anything else gets a
-    generic line, because an unexpected traceback is not something a user can
-    act on and may say more about the server than it should.
+    Expected failures keep the backend's own wording, which was written for
+    the person who has to fix the problem - "does not look like page 1: it
+    ends with 2 unwritten box(es)" is exactly what they need. Anything else
+    gets a generic line, because an unexpected traceback is not something a
+    user can act on and may say more about the server than it should.
     """
     if is_expected(error):
-        return str(error)
+        return _without_server_paths(str(error))
     return "The font could not be built because of an unexpected problem."

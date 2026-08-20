@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Upload your pages — Handwrite{% endblock %}
+
+{% block content %}
+<p class="eyebrow">Step two</p>
+<h1>Upload your three pages</h1>
+<p class="lead">Add each scanned page to its own slot, in order.</p>
+
+<div class="notice notice-info">
+  <strong>Upload your pages in order: Page 1, Page 2, Page 3.</strong>
+  Pages 1 and 3 have the same number of boxes, so the order matters. We check
+  each page before building anything.
+</div>
+
+<form id="upload-form">
+  <div class="grid grid-3" style="margin-top:22px">
+    {% for n in [1, 2, 3] %}
+    <div class="slot" data-slot="{{ n }}">
+      <h3>Page {{ n }}</h3>
+      <p class="hint">
+        {% if n == 1 %}Letters, digits, punctuation
+        {% elif n == 2 %}Greek and operators
+        {% else %}Greek capitals, maths, symbols{% endif %}
+      </p>
+      <label class="dropzone" for="file-{{ n }}">
+        <span class="placeholder">Click to choose Page {{ n }}<br><small>PNG or JPG</small></span>
+        <img class="thumb hidden" alt="Page {{ n }} preview">
+      </label>
+      <input type="file" id="file-{{ n }}" accept="image/png,image/jpeg,image/bmp,image/tiff" class="hidden">
+      <div class="slot-file hidden">
+        <span class="filename"></span>
+        <button type="button" class="remove">Remove</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div id="upload-error" class="notice notice-error hidden">
+    <strong id="upload-error-title">Something went wrong</strong>
+    <div class="detail" id="upload-error-detail"></div>
+  </div>
+
+  <div class="btn-row">
+    <button type="submit" class="btn btn-lg" id="build" disabled>Build My Font</button>
+    <a class="btn btn-lg btn-secondary" href="/template">Back to instructions</a>
+  </div>
+  <p style="font-size:14px;color:var(--faint)">
+    Each page must be under 10 MB. Building takes a few seconds.
+  </p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Building your font — Handwrite{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+
+{% block content %}
+<p class="eyebrow">Step three</p>
+<h1 id="headline">Building your font</h1>
+<p class="lead" id="subhead">This usually takes a few seconds.</p>
+
+<ul class="stages" id="stages">
+  <li class="done" data-stage="uploaded"><span class="mark">✓</span> Pages uploaded</li>
+  <li data-stage="validating"><span class="mark"></span> Validating handwriting pages</li>
+  <li data-stage="building"><span class="mark"></span> Building your font</li>
+  <li data-stage="finalising"><span class="mark"></span> Finalising font</li>
+</ul>
+
+<div id="build-error" class="notice notice-error hidden" style="margin-top:28px">
+  <strong id="build-error-title">We could not build your font</strong>
+  <div class="detail" id="build-error-detail"></div>
+</div>
+
+<div class="btn-row hidden" id="done-actions">
+  <a class="btn btn-lg" id="studio-link" href="#">Open Font Studio</a>
+</div>
+<div class="btn-row hidden" id="fail-actions">
+  <a class="btn btn-lg" href="/upload">Try again</a>
+  <a class="btn btn-lg btn-secondary" href="/template">Check the instructions</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.JOB_ID = {{ job_id | tojson }};</script>
+<script src="{{ url_for('static', filename='js/build.js') }}"></script>
+{% endblock %}

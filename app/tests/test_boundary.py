@@ -203,3 +203,30 @@ class TestJobRegistry(AppTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMessagesRevealNoServerPaths(unittest.TestCase):
+    """A user should never see where the server keeps its files."""
+
+    def test_an_absolute_path_is_reduced_to_a_filename(self):
+        error = PageValidationError(
+            "Page 1 of 3 ('/tmp/handwrite-jobs/abc123/pages/page_1.png') does "
+            "not look like page 1: it ends with 2 unwritten box(es)."
+        )
+        message = errors.message_for(error)
+
+        self.assertNotIn("/tmp/", message)
+        self.assertNotIn("handwrite-jobs", message)
+        self.assertIn("'page_1.png'", message)
+        self.assertIn("does not look like page 1", message)
+
+    def test_a_windows_path_is_reduced_too(self):
+        error = PageValidationError(
+            "Page 2 of 3 ('C:\\\\jobs\\\\x\\\\page_2.png') is rotated."
+        )
+        self.assertNotIn("jobs", errors.message_for(error))
+        self.assertIn("page_2.png", errors.message_for(error))
+
+    def test_messages_without_paths_are_untouched(self):
+        error = PageValidationError("Page 3 of 3 looks upside down.")
+        self.assertEqual(errors.message_for(error), "Page 3 of 3 looks upside down.")

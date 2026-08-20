@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Not ready yet — Handwrite{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<h1>Not ready yet</h1>
+<p class="lead">This font is still {{ status }}.</p>
+<div class="btn-row">
+  <a class="btn" href="/build/{{ job_id }}">Back to progress</a>
+</div>
+{% endblock %}
