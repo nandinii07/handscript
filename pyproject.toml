@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Yash Lamba, Saksham Arora, Aryan Gupta" },
+    { name = "Yash Lamba", email = "yashlamba2000@gmail.com" },
+    { name = "Saksham Arora", email = "sakshamarora1001@gmail.com" },
+    { name = "Aryan Gupta", email = "aryangupta973@gmail.com" },
 ]
 keywords = ["handwriting", "font", "ttf", "fontforge", "potrace"]
 classifiers = [

@@ -1,1 +1,6 @@
 include handwrite/default.json
+prune tests
+prune examples
+prune docs
+prune app
+prune .github

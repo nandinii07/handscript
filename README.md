@@ -1,14 +1,16 @@
 <p align="center">
-    <a href="https://github.com/builtree/handwrite">
+    <a href="https://github.com/nandinii07/handscript">
         <img src="https://raw.githubusercontent.com/builtree/assets/handwrite/logo_white_background.svg" width=40%>
         </img>
     </a>
 </p>
 
-[![Tests](https://github.com/yashlamba/handwrite/workflows/Tests/badge.svg)](https://github.com/yashlamba/handwrite/actions)
-[![PyPI version](https://img.shields.io/pypi/v/handwrite.svg)](https://pypi.org/project/handwrite)
+[![Tests](https://github.com/nandinii07/handscript/workflows/Tests/badge.svg)](https://github.com/nandinii07/handscript/actions)
+[![PyPI version](https://img.shields.io/pypi/v/handscript.svg)](https://pypi.org/project/handscript)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+This project is a fork of [yashlamba/handwrite](https://github.com/yashlamba/handwrite) (MIT licensed) - see [LICENSE](LICENSE) for the original copyright notice.
 
 # Handwrite - Type in your Handwriting!
 
