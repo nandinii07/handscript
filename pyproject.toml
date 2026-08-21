@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "handscript"
+version = "0.1.0"
+description = "Turn a scanned handwriting sample into a real, installable font, and typeset scientific notation in it."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Yash Lamba, Saksham Arora, Aryan Gupta" },
+]
+keywords = ["handwriting", "font", "ttf", "fontforge", "potrace"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# The actual pipeline (handwrite/, unchanged) only ever needed these two -
+# OpenCV for box/contour detection, Pillow for image I/O. handscript's own
+# code (handscript/) adds no new runtime dependency of its own: it is a thin
+# orchestration layer over the pipeline below it.
+dependencies = [
+    "opencv-python",
+    "Pillow",
+]
+
+[project.optional-dependencies]
+# Needed only to run the test suite / contribute to the pipeline itself.
+dev = [
+    "pytest",
+    "black",
+    "pre-commit",
+]
+# Needed only to build the project documentation site (mkdocs).
+docs = [
+    "mkdocs==1.2.2",
+    "mkdocs-material==6.1.0",
+    "pymdown-extensions==8.2",
+    "mkdocstrings>=0.16.1",
+    "pytkdocs[numpy-style]",
+]
+# Needed only for the optional web UI in app/ - not required to use
+# HandScript as a library or from the command line.
+web = [
+    "flask>=3.0",
+    "gunicorn>=21.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/nandinii07/handscript"
+Repository = "https://github.com/nandinii07/handscript"
+
+[project.scripts]
+# The new public CLI.
+handscript = "handscript.cli:main"
+# The pipeline's original entry points, unchanged and still installed - other
+# tools and scripts that already invoke `handwrite` keep working.
+handwrite = "handwrite.cli:main"
+handwrite-render = "handwrite.render_cli:main"
+
+[tool.setuptools.packages.find]
+include = ["handscript*", "handwrite*"]
+
+[tool.setuptools.package-data]
+handwrite = ["default.json"]

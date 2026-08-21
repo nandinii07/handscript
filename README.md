@@ -32,45 +32,194 @@ You can get started with Handwrite [here](https://yashlamba.github.io/handwrite/
 ## What you get
 
 1. **A font from your handwriting.** Print a form, fill in one character per
-   box, scan it, and `handwrite` turns it into a `.ttf` you can install and
+   box, scan it, and HandScript turns it into a `.ttf` you can install and
    use in any word processor.
 
-2. **Scientific notation in that handwriting.** `handwrite-render` types
-   formulas like `E = mc^2`, `H_2O` and `SO_4^{2-}` in your font, with real
-   superscripts and subscripts.
+2. **Scientific notation in that handwriting.** Type formulas like
+   `E = mc^2`, `H_2O` and `SO_4^{2-}` in your font, with real superscripts
+   and subscripts.
 
 There are two forms. The original `handwrite_sample.pdf` collects 80
 characters on one page. The newer `handwrite_sample_extended.pdf` collects
 191 across three pages, adding Greek in both cases, math operators, arrows
 (`α β γ δ ε θ λ μ π ρ σ φ ω Δ Ω × ÷ ≠ ≤ ≥ ± ∓ ≈ ∝ ∞ √ → ← ↔ { } | °`) - use
-that one if you want to write notation.
+that one if you want to write notation. Run `handscript glyphs` to print
+exactly what each page expects.
 
-## Quick start
+The core product is the **`handscript` Python package** below - it works
+entirely on your own machine from Python or the command line, with no server,
+browser, or network involved. The optional [web application](#web-application)
+further down wraps the same package in a point-and-click UI; it is a
+convenience, not a requirement.
+
+## HandScript - the Python package
+
+### Installation
 
 ```console
-pip install handwrite            # also needs potrace and fontforge installed
-
-# Build a font from a single-page form:
-handwrite scan.jpg fonts/
-
-# ...or from the three-page extended form (one image per page in a directory):
-handwrite scans/ fonts/
-
-# Type notation in it:
-handwrite-render --font fonts/MyFont.ttf "E = mc^2" "H_2O" "SO_4^{2-}"
+pip install -e .              # from a clone, for development
+pip install handscript        # once published to PyPI
 ```
 
-The second command writes a self-contained HTML page; print it to PDF from
-your browser. Supported notation is `^` and `_`, with `{}` to group more than
-one character - see the
-[usage guide](https://yashlamba.github.io/handwrite/usage/) for the full
-syntax.
+Either way you also need **Potrace** and **FontForge** on `PATH` - see
+[Native dependencies](#native-dependencies) below; nothing in `pip install`
+can put these there for you, since they are not Python packages.
+
+### Input format
+
+Two ways to build a font, matching the two printed forms:
+
+- **`input_dir`** - a directory containing one scanned page image per form
+  page (`.png`/`.jpg`/`.jpeg`/`.bmp`/`.tif`/`.tiff`), for the 191-character
+  extended form. Name them so sorting puts them in order, e.g. `page_1.jpg`,
+  `page_2.jpg`, `page_3.jpg` - pages are matched by sorted filename, not by
+  guessing content, because two of the three pages share an identical box
+  grid and a swapped scan would otherwise build a font with the wrong
+  character in every box, silently.
+- **`input_path`** - a single scanned image, for the original 80-character
+  form.
+
+Each scan should be reasonably straight and right-side up; HandScript checks
+this itself (see [Limitations](#limitations)) and raises
+`PageValidationError` rather than silently building a wrong font from a
+rotated or out-of-order scan.
+
+### Python API
+
+```python
+from handscript import HandScript
+
+hs = HandScript()
+
+result = hs.create_font(
+    input_dir="handwriting/",
+    output_path="output/my_handwriting.ttf",
+)
+
+print(result.font_path)     # output/my_handwriting.ttf
+print(result.family_name)   # "my_handwriting" (from the filename, by default)
+
+# Check whether the font can draw some text before you rely on it:
+missing = hs.check_coverage("E = mc^2", result.font_path)
+
+# Typeset notation in the font you just built:
+hs.render(["E = mc^2", "H_2O", "SO_4^{2-}"], result.font_path, "formulas.html")
+```
+
+See `examples/basic_usage.py` for a complete, runnable script, and
+`handscript/pipeline.py` for the full docstrings of every method.
+
+Defaults (family name, style, font size, strict mode, ...) can be set once
+instead of on every call:
+
+```python
+from handscript import HandScript, HandScriptConfig
+
+hs = HandScript(HandScriptConfig(family_name="My Handwriting", strict_notation=True))
+```
+
+### CLI
+
+```console
+handscript build ./handwriting --output ./my_handwriting.ttf
+handscript render ./my_handwriting.ttf "E = mc^2" "H_2O"
+handscript coverage ./my_handwriting.ttf "SO_4^{2-}"
+handscript glyphs
+handscript --help
+```
+
+Supported notation is `^` and `_` for single-character scripts, `{}` to
+group more than one character, `{a}/{b}` for fractions, `√{...}` for
+radicals, and `^^`/`__` (doubled markers) for stacked notation such as
+limits - see the [usage guide](https://yashlamba.github.io/handwrite/usage/)
+for the full syntax reference.
+
+The original `handwrite` / `handwrite-render` commands are still installed
+and unchanged, for anything already scripted against them.
+
+### Output format
+
+A standard TrueType `.ttf`, installable and usable anywhere a font can be -
+word processors, design tools, browsers via `@font-face`. `handscript render`
+produces a self-contained HTML file (the font is embedded as base64); print
+it to PDF from a browser to get a document.
+
+### Configuration
+
+`HandScriptConfig` (passed to `HandScript(...)`) covers family name, style,
+an alternate pipeline configuration file, where to keep intermediate files,
+and notation rendering options - see `handscript/config.py` for the full,
+documented list. Nothing here is an environment variable or a secret; it is
+all plain constructor/method arguments, since a library has no deployment
+environment to read one from.
+
+### Native dependencies
+
+The actual image-to-font work is done by two system binaries, not Python
+packages - `pip install` cannot install either of them:
+
+| Binary | Used for | Install |
+|---|---|---|
+| [Potrace](http://potrace.sourceforge.net/) | Tracing each cropped character bitmap to a vector outline | `brew install potrace` (macOS), `apt install potrace` (Debian/Ubuntu) |
+| [FontForge](https://fontforge.org/) | Assembling the traced outlines into a `.ttf` | `brew install fontforge` (macOS), `apt install fontforge` (Debian/Ubuntu) |
+
+If either is missing, `HandScript.create_font` raises
+`MissingDependencyError` naming which one - it never builds a partial or
+placeholder font instead. `handwrite/svgtottf.py` and `handwrite/pngtosvg.py`
+are the two modules that call out to them, if you want to see exactly how.
+`opencv-python` and `Pillow` (the box-detection and image-I/O dependencies)
+*are* ordinary Python packages, and are installed automatically as part of
+`pip install`.
+
+### Platforms
+
+Tested on macOS and Linux, which is also where Potrace and FontForge are
+straightforward to install. Nothing in the pipeline is platform-specific by
+design, but Windows support depends entirely on getting both binaries onto
+`PATH` there - see `docs/contributing.md` for notes on that.
+
+### Using HandScript from another Python project
+
+`handscript` is an ordinary importable package with no side effects at
+import time and no global state - construct a `HandScript()` (or several,
+with different `HandScriptConfig`s) anywhere in your own code:
+
+```python
+from handscript import HandScript, InvalidInputError, PageValidationError
+
+hs = HandScript()
+try:
+    result = hs.create_font(input_dir=scans_dir, output_path=out_path)
+except PageValidationError as error:
+    ...  # a scan was upside down, rotated, or out of order
+except InvalidInputError as error:
+    ...  # a bad path, wrong page count, or unsupported image type
+```
+
+See `handscript/exceptions.py` for the full hierarchy - every exception the
+package raises inherits from `HandScriptError`.
+
+### Limitations
+
+- **No OCR.** Character identity comes from box *position* on the form, not
+  from reading the ink - so the form itself, not a freehand page, is the
+  required input shape.
+- **Requires two native binaries** (Potrace, FontForge) that `pip` cannot
+  install - see [Native dependencies](#native-dependencies).
+- **A build takes a couple of seconds** and runs synchronously in the calling
+  process/thread - `create_font` is a blocking call by design, not a
+  background job; wrap it yourself (a thread, a task queue) if you need it
+  otherwise.
+- **Only TrueType (`.ttf`) output** - not OpenType (`.otf`) - matching what
+  the underlying FontForge assembly step produces.
 
 ## Web application
 
-A small Flask app (`app/`) sits in front of the library above, so filling in
-the form is the only part left to do by hand: upload three scans, watch it
-build, then type in the result.
+An optional Flask app (`app/`) sits in front of the package above, so filling
+in the form is the only part left to do by hand: upload three scans, watch it
+build, then type in the result. It is not required to use HandScript - the
+package above works standalone from Python or the CLI, with no server, no
+browser, and no HTTP involved anywhere in its own code path.
 
 ```
 Browser -> gunicorn (production) or `flask run` (local) -> Flask (app/) -> handwrite/

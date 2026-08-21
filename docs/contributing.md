@@ -40,7 +40,7 @@
 6. Make sure the tests run:
 
    ```console
-   python setup.py test
+   pytest
    ```
 
 7. Install pre-commit hooks before contributing:
@@ -79,7 +79,7 @@ You are ready to go!
 6. Make sure the tests run:
 
    ```console
-   python setup.py test
+   pytest
    ```
 
 7. Install pre-commit hooks before contributing:

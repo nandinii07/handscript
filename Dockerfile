@@ -39,8 +39,9 @@ WORKDIR /srv/handwrite
 
 # Dependencies first, so editing application code does not invalidate the
 # apt/pip layers on a rebuild.
-COPY setup.py MANIFEST.in README.md ./
+COPY pyproject.toml MANIFEST.in README.md ./
 COPY handwrite ./handwrite
+COPY handscript ./handscript
 RUN pip install --no-cache-dir .
 
 COPY app/requirements.txt ./app/requirements.txt
