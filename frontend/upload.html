@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload your pages — HandScript</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="js/config.js"></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Hand<span>Script</span></a>
+    <nav>
+      <a href="template.html">Template</a>
+      <a href="upload.html">Create my font</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <p class="eyebrow">Step two</p>
+    <h1>Upload your three pages</h1>
+    <p class="lead">Add each scanned page to its own slot, in order.</p>
+
+    <div class="notice notice-info">
+      <strong>Upload your pages in order: Page 1, Page 2, Page 3.</strong>
+      Each page has a different number of boxes, so we can tell them apart and
+      confirm you uploaded the right one in the right slot before building
+      anything. Page 4 of the template is a reference sheet only — keep it for
+      yourself, there's nothing to upload for it.
+    </div>
+
+    <form id="upload-form">
+      <div class="grid grid-3" style="margin-top:22px">
+        <div class="slot" data-slot="1">
+          <h3>Page 1</h3>
+          <p class="hint">Uppercase and lowercase letters</p>
+          <a class="ref-link" href="assets/blank-page-1.png" target="_blank" rel="noopener">View blank Page 1 ↗</a>
+          <label class="dropzone" for="file-1">
+            <span class="placeholder">Click to choose Page 1<br><small>PNG or JPG</small></span>
+            <img class="thumb hidden" alt="Page 1 preview">
+          </label>
+          <input type="file" id="file-1" accept="image/png,image/jpeg,image/bmp,image/tiff" class="hidden">
+          <div class="slot-file hidden">
+            <span class="filename"></span>
+            <button type="button" class="remove">Remove</button>
+          </div>
+        </div>
+        <div class="slot" data-slot="2">
+          <h3>Page 2</h3>
+          <p class="hint">Numbers, punctuation and brackets</p>
+          <a class="ref-link" href="assets/blank-page-2.png" target="_blank" rel="noopener">View blank Page 2 ↗</a>
+          <label class="dropzone" for="file-2">
+            <span class="placeholder">Click to choose Page 2<br><small>PNG or JPG</small></span>
+            <img class="thumb hidden" alt="Page 2 preview">
+          </label>
+          <input type="file" id="file-2" accept="image/png,image/jpeg,image/bmp,image/tiff" class="hidden">
+          <div class="slot-file hidden">
+            <span class="filename"></span>
+            <button type="button" class="remove">Remove</button>
+          </div>
+        </div>
+        <div class="slot" data-slot="3">
+          <h3>Page 3</h3>
+          <p class="hint">Operators, symbols, Greek and superscripts</p>
+          <a class="ref-link" href="assets/blank-page-3.png" target="_blank" rel="noopener">View blank Page 3 ↗</a>
+          <label class="dropzone" for="file-3">
+            <span class="placeholder">Click to choose Page 3<br><small>PNG or JPG</small></span>
+            <img class="thumb hidden" alt="Page 3 preview">
+          </label>
+          <input type="file" id="file-3" accept="image/png,image/jpeg,image/bmp,image/tiff" class="hidden">
+          <div class="slot-file hidden">
+            <span class="filename"></span>
+            <button type="button" class="remove">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="upload-error" class="notice notice-error hidden">
+        <strong id="upload-error-title">Something went wrong</strong>
+        <div class="detail" id="upload-error-detail"></div>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-lg" id="build" disabled>Build My Font</button>
+        <a class="btn btn-lg btn-secondary" href="template.html">Back to instructions</a>
+      </div>
+      <p style="font-size:14px;color:var(--faint)">
+        Each page must be under 10 MB. Building takes a few seconds.
+      </p>
+    </form>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">HandScript — your handwriting, as a font you can type with.</div>
+</footer>
+<script src="js/upload.js"></script>
+</body>
+</html>

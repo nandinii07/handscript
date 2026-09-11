@@ -70,7 +70,7 @@ class TestTemplatePage(AppTestCase):
         response = self.client.get("/api/template.pdf")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[:5], b"%PDF-")
-        self.assertEqual(response.data.count(b"/Type /Page\n"), 3)
+        self.assertEqual(response.data.count(b"/Type /Page\n"), 4)
 
 
 class TestUploadPage(AppTestCase):

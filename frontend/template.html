@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The template — HandScript</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="js/config.js"></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Hand<span>Script</span></a>
+    <nav>
+      <a href="template.html">Template</a>
+      <a href="upload.html">Create my font</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap narrow">
+    <p class="eyebrow">Step one</p>
+    <h1>Fill in the template</h1>
+    <p class="lead">
+      Four pages, 128 characters. Every box carries a printed guide — baseline,
+      x-height, cap-height, ascender and descender — so you align to a shared
+      grid while still writing in your own hand. This is the only part that
+      takes any real time.
+    </p>
+
+    <div class="btn-row">
+      <a class="btn btn-lg" id="template-link-top" href="#">Download Template (PDF)</a>
+      <a class="btn btn-lg btn-secondary" href="upload.html">I have filled it in</a>
+    </div>
+
+    <div class="section">
+      <h2>Printing</h2>
+      <ul class="checklist">
+        <li><strong>Print all four pages.</strong> Page 1 is uppercase and lowercase
+          letters, page 2 is numbers, punctuation and brackets, page 3 is
+          operators, math symbols, Greek and superscripts.</li>
+        <li><strong>Page 4 is reference only</strong> — it explains what each guide
+          line means. There is nothing to write on it, and you will not upload it.</li>
+        <li><strong>Print at 100% scale</strong> — not "fit to page". Scaling shrinks
+          the boxes and leaves you less room to write.</li>
+        <li>Plain white A4 or Letter, one page per sheet.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Writing</h2>
+      <ul class="checklist">
+        <li><strong>Use a dark pen</strong> with a reasonably thick stroke. Pencil and
+          very light ink can be too faint to pick up.</li>
+        <li><strong>Keep the same pen and the same writing style on every page</strong>,
+          and keep the same slant throughout — the guides only correct position and
+          scale, not shape.</li>
+        <li>Rest normal letters <strong>on the solid blue baseline</strong>. Lowercase
+          bodies reach the x-height line, uppercase reaches the cap-height line, and
+          ascenders/descenders (b d f h k l t / g j p q y) reach their own guide.</li>
+        <li><strong>Write inside each box</strong> and don't touch the printed
+          border — ink crossing a border can confuse the box detection.</li>
+        <li>The small character printed <em>under</em> each box tells you what to
+          write in it. <strong>Do not skip any box</strong> — a skipped box becomes a
+          blank character in your font.</li>
+        <li><strong>Leave any box with a faint grey X inside it empty.</strong> Those
+          are unused slots, printed as boxes so the grid stays regular, not
+          characters to write.</li>
+        <li>Punctuation follows its own printed guide rather than sitting centred —
+          the period sits on the baseline, the comma's tail drops below it.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Scanning</h2>
+      <ul class="checklist">
+        <li>A scanner at 300 DPI is best. A phone works if you use a scanning app
+          such as Adobe Scan or the Notes app, which straighten the page for you.</li>
+        <li><strong>Keep the page flat and the whole page in frame</strong>, including
+          all four corner registration marks and the heading at the top.</li>
+        <li><strong>Do not crop</strong> the edges or the heading — the heading is how
+          we detect an upside-down page.</li>
+        <li>Even lighting, no shadow across the sheet, no glare.</li>
+        <li><strong>Upload pages 1, 2 and 3, in that order.</strong> Each has a
+          different number of boxes, so we check you have the right page in the
+          right slot before building anything. Page 4 is not uploaded.</li>
+      </ul>
+    </div>
+
+    <div class="btn-row">
+      <a class="btn btn-lg" href="upload.html">Continue to upload</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">HandScript — your handwriting, as a font you can type with.</div>
+</footer>
+
+<script>
+  document.getElementById("template-link-top").href = window.API_BASE + "/api/template.pdf";
+</script>
+</body>
+</html>

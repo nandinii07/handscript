@@ -58,6 +58,7 @@ def create_app(job_root: Optional[Path] = None, **config) -> Flask:
         MAX_CONCURRENT_BUILDS=settings.max_workers,
         BUILD_TIMEOUT=settings.build_timeout,
         JOB_TTL_HOURS=settings.job_ttl_hours,
+        CORS_ORIGINS=settings.cors_origins,
     )
     application.config.update(config)
 
@@ -75,6 +76,24 @@ def create_app(job_root: Optional[Path] = None, **config) -> Flask:
 
     application.register_blueprint(api)
     application.register_blueprint(web)
+
+    @application.after_request
+    def _allow_cross_origin(response):
+        """Let a frontend served from a different origin call this API.
+
+        No dependency added (no flask-cors) for something this small. Applied
+        to every response, including Flask's own automatic reply to an
+        OPTIONS preflight - browsers send one before a POST whose
+        Content-Type is application/json (/api/preview), since that content
+        type is not CORS-"simple". A plain <form> or FormData POST
+        (/api/jobs) never triggers a preflight, so this is the only piece
+        needed for either request shape.
+        """
+        origin = application.config["CORS_ORIGINS"]
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
 
     @application.errorhandler(413)
     def _too_large(_error):

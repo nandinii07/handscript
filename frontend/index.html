@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HandScript — turn your handwriting into a font</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="js/config.js"></script>
+<script>
+document.write(
+  '<style>@font-face { font-family: "UserHand"; ' +
+  'src: url("' + window.API_BASE + '/demo-font.ttf") format("truetype"); ' +
+  'font-display: swap; }</style>'
+);
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Hand<span>Script</span></a>
+    <nav>
+      <a href="template.html">Template</a>
+      <a href="upload.html">Create my font</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <p class="eyebrow">Your handwriting, as a real font</p>
+    <h1>Turn your handwriting<br>into a font.</h1>
+    <p class="lead">
+      Fill in a three-page template by hand, upload the pages, and get a
+      TrueType font of your own handwriting — one you can install and type with
+      anywhere, including maths and science notation.
+    </p>
+
+    <div class="btn-row">
+      <a class="btn btn-lg" href="upload.html">Create My Font</a>
+      <a class="btn btn-lg btn-secondary" id="template-link" href="#">Download Template</a>
+    </div>
+
+    <div class="section specimen">
+      <div class="specimen-row"><span class="label">Your writing</span>
+        <span class="hand">Hello, world!</span></div>
+      <div class="specimen-row"><span class="label">Numbers</span>
+        <span class="hand hand-sm">1234567890</span></div>
+      <div class="specimen-row"><span class="label">Greek</span>
+        <span class="hand hand-sm">α β γ δ Δ Ω π λ</span></div>
+      <div class="specimen-row"><span class="label">Notation</span>
+        <span class="hand hand-sm">E = mc<span class="sup">2</span> &nbsp; H<span class="sub">2</span>O &nbsp; ∫ Σ √ ≠ ±</span></div>
+      <p style="margin:16px 0 0;font-size:13px;color:var(--faint)">
+        Shown in a font this tool generated from someone's handwriting.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step"><div><h3>Print the template</h3>
+          <p>Three A4 pages with a box for every character.</p></div></div>
+        <div class="step"><div><h3>Fill it in by hand</h3>
+          <p>One character per box, in your own writing. Takes about twenty minutes.</p></div></div>
+        <div class="step"><div><h3>Upload the three pages</h3>
+          <p>Scan or photograph them. We check each page is the right one, the right way up.</p></div></div>
+        <div class="step"><div><h3>Type with your handwriting</h3>
+          <p>Preview it, try some formulas, and download the <code>.ttf</code>.</p></div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>What it covers</h2>
+      <p>
+        191 characters: the Latin alphabet in both cases, digits, punctuation,
+        the full Greek alphabet, and the mathematical, scientific and chemical
+        symbols needed for real notation — ∫ ∑ ∏ ∂ ∇ √ ± ≠ ≤ ≥ ⇌ ∈ ∞ and more.
+      </p>
+      <p>
+        Superscripts and subscripts reuse your own glyphs rather than asking you
+        to write them twice, so <em>x²</em> is your handwritten <em>2</em>, made
+        smaller and lifted.
+      </p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">HandScript — your handwriting, as a font you can type with.</div>
+</footer>
+
+<script>
+  document.getElementById("template-link").href = window.API_BASE + "/api/template.pdf";
+</script>
+</body>
+</html>

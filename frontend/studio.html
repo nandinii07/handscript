@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Font Studio — HandScript</title>
+<link rel="stylesheet" href="css/app.css">
+<script src="js/config.js"></script>
+<script>
+  /* The font is served once and applied here, same as the server-rendered
+     version did - no request per keystroke. Job id comes from the query
+     string (?job=<id>) since this is a static page with no server-side
+     routing; injected this early so there is no flash of a fallback font. */
+  (function () {
+    var jobId = new URLSearchParams(window.location.search).get("job");
+    if (jobId) {
+      document.write(
+        '<style>@font-face { font-family: "UserHand"; ' +
+        'src: url("' + window.API_BASE + '/api/jobs/' + jobId + '/font.ttf") format("truetype"); ' +
+        'font-display: swap; }</style>'
+      );
+    }
+  })();
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Hand<span>Script</span></a>
+    <nav>
+      <a href="template.html">Template</a>
+      <a href="upload.html">Create my font</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <!-- Shown only if the job id is missing, unknown, or not yet completed -
+         the client-side equivalent of the old server-rendered not_ready.html.
+         studio.js decides which of #studio-not-ready / #studio-content to
+         show once it has actually asked the API. -->
+    <div id="studio-not-ready" class="hidden">
+      <h1>Not ready yet</h1>
+      <p class="lead" id="not-ready-detail">This font is still being built.</p>
+      <div class="btn-row">
+        <a class="btn" id="not-ready-back" href="upload.html">Back to progress</a>
+      </div>
+    </div>
+
+    <div id="studio-content" class="hidden">
+      <p class="eyebrow">Your font is ready</p>
+      <h1>Font Studio</h1>
+      <p class="lead">
+        This is <strong id="family-name"></strong>, built from your three pages.
+        Type anything below to see it.
+      </p>
+
+      <div class="btn-row">
+        <a class="btn btn-lg" id="download-link" href="#" download>Download My Font</a>
+        <button class="btn btn-lg btn-secondary" id="copy-text" type="button">Copy my text</button>
+      </div>
+
+      <div class="section">
+        <h2>Your handwriting</h2>
+        <p>Type here and it appears in your own hand.</p>
+        <textarea id="text-input" rows="3" placeholder="Type something here...">Hello, world! This is my handwriting.</textarea>
+        <div class="output hand" id="text-output"></div>
+      </div>
+
+      <div class="section">
+        <h2>Formula playground</h2>
+        <p>
+          Write notation the way you would say it. Superscripts and subscripts reuse
+          your own glyphs, so nothing here was written twice.
+        </p>
+        <input type="text" id="formula-input" class="mono" value="{-b ± √{b^2-4ac}}/{2a}"
+               placeholder="x^2 + y^2 = z^2">
+        <div class="chips" id="examples">
+          <button type="button" class="chip">E = mc^2</button>
+          <button type="button" class="chip">H_2O</button>
+          <button type="button" class="chip">SO_4^{2-}</button>
+          <button type="button" class="chip">{a}/{b}</button>
+          <button type="button" class="chip">√{x+1}</button>
+          <button type="button" class="chip">Σ__{i=1}^^{n} x_i</button>
+          <button type="button" class="chip">∫__{0}^^{∞} e^{-x} dx</button>
+          <button type="button" class="chip">v^^{→}</button>
+          <button type="button" class="chip">{lim}__{x→0}</button>
+        </div>
+
+        <div id="formula-error" class="notice notice-error hidden">
+          <strong>That notation is not quite right</strong>
+          <div class="detail" id="formula-error-detail"></div>
+        </div>
+        <div id="formula-missing" class="notice notice-warn hidden">
+          <strong>Your font does not contain some of these characters</strong>
+          <div class="detail" id="formula-missing-detail"></div>
+        </div>
+
+        <div class="output hand" id="formula-output"></div>
+      </div>
+
+      <div class="section">
+        <h2>Specimen</h2>
+        <p>Everything you wrote, so you can check it all came through.</p>
+        <div class="specimen">
+          <div class="specimen-row"><span class="label">Uppercase</span>
+            <span class="hand hand-sm">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span></div>
+          <div class="specimen-row"><span class="label">Lowercase</span>
+            <span class="hand hand-sm">a b c d e f g h i j k l m n o p q r s t u v w x y z</span></div>
+          <div class="specimen-row"><span class="label">Numbers</span>
+            <span class="hand hand-sm">0 1 2 3 4 5 6 7 8 9</span></div>
+          <div class="specimen-row"><span class="label">Punctuation</span>
+            <span class="hand hand-sm">. , ; : ! ? " ' - + = / % &amp; ( ) [ ] { } | &lt; &gt; * ~ # $ @</span></div>
+          <div class="specimen-row"><span class="label">Greek small</span>
+            <span class="hand hand-sm">α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ ς τ υ φ χ ψ ω</span></div>
+          <div class="specimen-row"><span class="label">Greek capital</span>
+            <span class="hand hand-sm">Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω</span></div>
+          <div class="specimen-row"><span class="label">Maths</span>
+            <span class="hand hand-sm">× ÷ ± ∓ ≠ ≤ ≥ ≈ ≡ ∝ ∞ √ ∫ ∮ ∑ ∏ ∂ ∇ ħ ′ · ∴ ⇒ ⇌ ≪ ≫</span></div>
+          <div class="specimen-row"><span class="label">Sets, arrows</span>
+            <span class="hand hand-sm">∈ ⊂ ∪ ∩ ∅ ∀ ∃ ∠ ⊥ ∥ ⊕ ⊗ → ← ↔ ° – — … ‘ ’ “ ”</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Installing it</h2>
+        <div class="install">
+          <div><strong>macOS</strong> — double-click the <code>.ttf</code>, then choose
+            <em>Install Font</em> in Font Book.</div>
+          <div><strong>Windows</strong> — right-click the <code>.ttf</code> and choose
+            <em>Install</em>.</div>
+          <div><strong>Linux</strong> — copy it into <code>~/.local/share/fonts</code>
+            and run <code>fc-cache -f</code>.</div>
+        </div>
+        <p style="margin-top:14px">
+          Once installed it appears as <strong id="family-name-2"></strong> in any word
+          processor.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">HandScript — your handwriting, as a font you can type with.</div>
+</footer>
+<script src="js/studio.js"></script>
+</body>
+</html>

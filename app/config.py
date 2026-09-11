@@ -13,10 +13,14 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
-# The committed three page form, served as-is. The backend's form generator is
-# not run in production: the PDF in the repository is the one that was
-# printed, filled in and validated.
-TEMPLATE_PATH = REPOSITORY_ROOT / "handwrite_sample_extended.pdf"
+# The committed four-page training sheet, served as-is. The backend's form
+# generator is not run in production: the PDF in the repository is the one
+# that was printed, filled in and validated. Pages 1-3 carry the writing
+# cells (60, 30, 72) that get uploaded; page 4 is a typographic reference the
+# writer keeps and never fills in or submits. `converters()` auto-detects
+# this format from the number of cells on each scanned page, so no other
+# backend change is needed to accept sheets built from this template.
+TEMPLATE_PATH = REPOSITORY_ROOT / "handwrite_training_sheet.pdf"
 
 
 def _float_env(name: str, default: float) -> float:
@@ -37,6 +41,7 @@ class Settings:
     build_timeout: float
     max_workers: int
     font_family: str
+    cors_origins: str
 
     @property
     def max_content_length(self) -> int:
@@ -59,4 +64,11 @@ def load_settings() -> Settings:
         build_timeout=_float_env("HANDWRITE_BUILD_TIMEOUT", 120.0),
         max_workers=_int_env("HANDWRITE_MAX_WORKERS", 3),
         font_family=os.environ.get("HANDWRITE_FONT_FAMILY", "MyHandwriting"),
+        # "*" by default: this API has no cookies, session or auth to leak
+        # cross-origin - the only thing gating access to a job is its own
+        # unguessable id, exactly as it already was for a same-origin
+        # browser. Needed at all because the frontend can now be served from
+        # a different origin (e.g. a Cloudflare-hosted static site) than
+        # this API.
+        cors_origins=os.environ.get("HANDWRITE_CORS_ORIGINS", "*"),
     )

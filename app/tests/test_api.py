@@ -220,12 +220,12 @@ class TestPreviewAgainstAFont(AppTestCase):
 
 
 class TestTemplate(AppTestCase):
-    def test_it_serves_the_committed_three_page_form(self):
+    def test_it_serves_the_committed_four_page_training_sheet(self):
         response = self.client.get("/api/template.pdf")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
         self.assertEqual(response.data[:5], b"%PDF-")
-        self.assertEqual(response.data.count(b"/Type /Page\n"), 3)
+        self.assertEqual(response.data.count(b"/Type /Page\n"), 4)
 
     def test_it_is_the_file_from_the_repository(self):
         committed = Path(self.app.config["TEMPLATE_PATH"]).read_bytes()
