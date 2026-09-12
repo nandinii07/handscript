@@ -1,0 +1,32 @@
+[package]
+name = "handscript"
+version = "0.1.0"
+description = "HandScript desktop shell: a native macOS window around the existing static frontend, talking to the local HandScript backend."
+authors = ["HandScript"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "handscript_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+# Download My Font: WKWebView (the system webview this app uses on macOS)
+# does not honour a cross-origin <a download> the way a full browser does -
+# the click just navigates instead of saving. These two give the frontend a
+# real native Save panel + file write instead, wired up in studio.html /
+# studio.js; see the comment there for the exact flow.
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"

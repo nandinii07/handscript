@@ -53,8 +53,9 @@
 
       document.getElementById("family-name").textContent = job.family_name;
       document.getElementById("family-name-2").textContent = job.family_name;
-      document.getElementById("download-link").href =
-        window.API_BASE + "/api/jobs/" + jobId + "/font.ttf";
+      var downloadLink = document.getElementById("download-link");
+      downloadLink.href = window.API_BASE + "/api/jobs/" + jobId + "/font.ttf";
+      wireDownload(downloadLink, job.family_name);
 
       notReady.classList.add("hidden");
       content.classList.remove("hidden");
@@ -63,6 +64,48 @@
     .catch(function () {
       showNotReady("Could not reach the server to check this font.");
     });
+
+  /* "Download My Font" normally just relies on the <a download> attribute -
+     that's all a plain browser (including this same page deployed to
+     Cloudflare) needs, and this function does nothing there.
+
+     Inside the desktop app, `href` points across origins (this page is
+     served from Tauri's own local protocol, the font from
+     http://localhost:8000) - and WKWebView, the system webview this app
+     uses on macOS, does not honour `download` on a cross-origin link the
+     way a full browser does; it just navigates the window instead of
+     saving anything. window.__TAURI__ (present only inside the desktop
+     app - see tauri.conf.json's withGlobalTauri) is used here to fetch the
+     font's bytes ourselves and hand them to a native Save panel instead,
+     which sidesteps that webview limitation entirely. */
+  function wireDownload(link, familyName) {
+    if (!window.__TAURI__) return;
+
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      var suggestedName = (familyName || "handscript-font").replace(/\s+/g, "") + ".ttf";
+
+      fetch(link.href)
+        .then(function (response) {
+          if (!response.ok) throw new Error("The server returned " + response.status);
+          return response.arrayBuffer();
+        })
+        .then(function (bytes) {
+          return window.__TAURI__.dialog
+            .save({
+              defaultPath: suggestedName,
+              filters: [{ name: "TrueType Font", extensions: ["ttf"] }]
+            })
+            .then(function (path) {
+              if (!path) return; // user cancelled the save panel
+              return window.__TAURI__.fs.writeFile(path, new Uint8Array(bytes));
+            });
+        })
+        .catch(function (error) {
+          window.alert("Could not save the font: " + error.message);
+        });
+    });
+  }
 
   function initStudio() {
     /* ---- plain text ---- */
